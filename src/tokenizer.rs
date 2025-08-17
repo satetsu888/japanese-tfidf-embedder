@@ -2,6 +2,99 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DictionaryEntry {
+    pub surface: String,
+    pub variants: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserDictionary {
+    entries: Vec<DictionaryEntry>,
+    variant_to_surface: HashMap<String, String>,
+}
+
+impl UserDictionary {
+    pub fn new(entries: Vec<DictionaryEntry>) -> Self {
+        let mut variant_to_surface = HashMap::new();
+        
+        for entry in &entries {
+            variant_to_surface.insert(entry.surface.clone(), entry.surface.clone());
+            
+            for variant in &entry.variants {
+                variant_to_surface.insert(variant.clone(), entry.surface.clone());
+            }
+        }
+        
+        let mut dict = Self {
+            entries,
+            variant_to_surface,
+        };
+        
+        dict.sort_entries_by_length();
+        dict
+    }
+    
+    fn sort_entries_by_length(&mut self) {
+        for entry in &mut self.entries {
+            entry.variants.sort_by_key(|v| std::cmp::Reverse(v.chars().count()));
+        }
+        
+        self.entries.sort_by_key(|e| {
+            let max_len = e.variants.iter()
+                .map(|v| v.chars().count())
+                .max()
+                .unwrap_or(0)
+                .max(e.surface.chars().count());
+            std::cmp::Reverse(max_len)
+        });
+    }
+    
+    pub fn find_matches(&self, text: &str) -> Vec<(usize, usize, String)> {
+        let mut matches = Vec::new();
+        let chars: Vec<char> = text.chars().collect();
+        let mut processed = vec![false; chars.len()];
+        
+        for i in 0..chars.len() {
+            if processed[i] {
+                continue;
+            }
+            
+            for entry in &self.entries {
+                let all_patterns: Vec<&str> = std::iter::once(entry.surface.as_str())
+                    .chain(entry.variants.iter().map(|s| s.as_str()))
+                    .collect();
+                
+                for pattern in all_patterns {
+                    let pattern_chars: Vec<char> = pattern.chars().collect();
+                    if i + pattern_chars.len() <= chars.len() {
+                        let text_slice: String = chars[i..i + pattern_chars.len()].iter().collect();
+                        if text_slice == pattern {
+                            let mut all_processed = true;
+                            for j in i..i + pattern_chars.len() {
+                                if processed[j] {
+                                    all_processed = false;
+                                    break;
+                                }
+                            }
+                            
+                            if all_processed {
+                                matches.push((i, i + pattern_chars.len(), entry.surface.clone()));
+                                for j in i..i + pattern_chars.len() {
+                                    processed[j] = true;
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        matches
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JapaneseTokenizer {
     min_ngram: usize,
     max_ngram: usize,
@@ -10,6 +103,7 @@ pub struct JapaneseTokenizer {
     max_vocab_size: usize,
     stop_words: HashSet<String>,
     enable_stop_words: bool,
+    pub(crate) user_dictionary: Option<UserDictionary>,
 }
 
 impl Default for JapaneseTokenizer {
@@ -22,6 +116,7 @@ impl Default for JapaneseTokenizer {
             max_vocab_size: 50000,
             stop_words: HashSet::new(),
             enable_stop_words: true,
+            user_dictionary: None,
         };
         tokenizer.initialize_stop_words();
         tokenizer
@@ -78,6 +173,14 @@ impl JapaneseTokenizer {
             max_ngram,
             ..Self::default()
         }
+    }
+    
+    pub fn set_user_dictionary(&mut self, entries: Vec<DictionaryEntry>) {
+        self.user_dictionary = Some(UserDictionary::new(entries));
+    }
+    
+    pub fn clear_user_dictionary(&mut self) {
+        self.user_dictionary = None;
     }
 
     // Generate character n-grams from text
@@ -184,32 +287,93 @@ impl JapaneseTokenizer {
     pub fn tokenize(&self, text: &str) -> Vec<String> {
         let mut tokens = HashSet::new();
 
-        // Add character n-grams
-        for token in self.char_ngrams(text) {
-            if !self.should_filter_token(&token) {
-                tokens.insert(token);
+        // If user dictionary is available, find matches first
+        if let Some(ref dictionary) = self.user_dictionary {
+            let matches = dictionary.find_matches(text);
+            
+            // Add dictionary matches as tokens
+            for (_start, _end, surface) in &matches {
+                tokens.insert(surface.clone());
             }
-        }
-        
-        // Add kanji unigrams (1-grams for kanji only)
-        // These are important for capturing individual kanji meanings
-        for token in self.kanji_unigrams(text) {
-            if !self.should_filter_token(&token) {
-                tokens.insert(token);
+            
+            // Process unmatched portions with regular tokenization
+            let chars: Vec<char> = text.chars().collect();
+            let mut processed = vec![false; chars.len()];
+            
+            // Mark matched regions as processed
+            for (start, end, _) in &matches {
+                for i in *start..*end {
+                    processed[i] = true;
+                }
             }
-        }
+            
+            // Extract unmatched segments
+            let mut segments = Vec::new();
+            let mut current_segment = String::new();
+            
+            for (i, ch) in chars.iter().enumerate() {
+                if !processed[i] {
+                    current_segment.push(*ch);
+                } else if !current_segment.is_empty() {
+                    segments.push(current_segment.clone());
+                    current_segment.clear();
+                }
+            }
+            
+            if !current_segment.is_empty() {
+                segments.push(current_segment);
+            }
+            
+            // Apply regular tokenization to unmatched segments
+            for segment in segments {
+                for token in self.char_ngrams(&segment) {
+                    if !self.should_filter_token(&token) {
+                        tokens.insert(token);
+                    }
+                }
+                
+                for token in self.kanji_unigrams(&segment) {
+                    if !self.should_filter_token(&token) {
+                        tokens.insert(token);
+                    }
+                }
+                
+                for token in self.char_type_sequences(&segment) {
+                    if !self.should_filter_token(&token) {
+                        tokens.insert(token);
+                    }
+                }
+                
+                for token in self.estimate_word_boundaries(&segment) {
+                    if !self.should_filter_token(&token) {
+                        tokens.insert(token);
+                    }
+                }
+            }
+        } else {
+            // No dictionary, use regular tokenization
+            for token in self.char_ngrams(text) {
+                if !self.should_filter_token(&token) {
+                    tokens.insert(token);
+                }
+            }
+            
+            for token in self.kanji_unigrams(text) {
+                if !self.should_filter_token(&token) {
+                    tokens.insert(token);
+                }
+            }
 
-        // Add character type sequences
-        for token in self.char_type_sequences(text) {
-            if !self.should_filter_token(&token) {
-                tokens.insert(token);
+            for token in self.char_type_sequences(text) {
+                if !self.should_filter_token(&token) {
+                    tokens.insert(token);
+                }
             }
-        }
 
-        // Add estimated word boundaries
-        for token in self.estimate_word_boundaries(text) {
-            if !self.should_filter_token(&token) {
-                tokens.insert(token);
+            for token in self.estimate_word_boundaries(text) {
+                if !self.should_filter_token(&token) {
+                    tokens.insert(token);
+                }
             }
         }
 
@@ -239,6 +403,13 @@ impl JapaneseTokenizer {
     // Calculate token quality score (for N-gram quality scoring)
     pub fn calculate_token_score(&self, token: &str, doc_freq: usize, total_docs: usize) -> f32 {
         let mut score = 1.0;
+        
+        // Check if token is a dictionary word (high priority)
+        if let Some(ref dictionary) = self.user_dictionary {
+            if dictionary.variant_to_surface.contains_key(token) {
+                score *= 2.0;  // Boost score for dictionary words
+            }
+        }
         
         // Check if token is a single kanji (1-gram)
         let chars: Vec<char> = token.chars().collect();
@@ -566,5 +737,68 @@ mod tests {
         // Test removing stop word
         tokenizer.remove_stop_word("は");
         assert!(!tokenizer.get_stop_words().contains("は"));
+    }
+    
+    #[test]
+    fn test_user_dictionary() {
+        let mut tokenizer = JapaneseTokenizer::new();
+        
+        // Create dictionary entries
+        let entries = vec![
+            DictionaryEntry {
+                surface: "人工知能".to_string(),
+                variants: vec!["AI".to_string(), "エーアイ".to_string(), "Artificial Intelligence".to_string()],
+            },
+            DictionaryEntry {
+                surface: "機械学習".to_string(),
+                variants: vec!["ML".to_string(), "マシンラーニング".to_string()],
+            },
+        ];
+        
+        tokenizer.set_user_dictionary(entries);
+        
+        // Test with variants
+        let text1 = "AIとMLの研究をしています";
+        let tokens1 = tokenizer.tokenize(text1);
+        assert!(tokens1.contains(&"人工知能".to_string()), "AI should be normalized to 人工知能");
+        assert!(tokens1.contains(&"機械学習".to_string()), "ML should be normalized to 機械学習");
+        
+        // Test with surface forms
+        let text2 = "人工知能と機械学習の研究";
+        let tokens2 = tokenizer.tokenize(text2);
+        assert!(tokens2.contains(&"人工知能".to_string()));
+        assert!(tokens2.contains(&"機械学習".to_string()));
+        
+        // Test with katakana variants
+        let text3 = "エーアイとマシンラーニング";
+        let tokens3 = tokenizer.tokenize(text3);
+        assert!(tokens3.contains(&"人工知能".to_string()), "エーアイ should be normalized to 人工知能");
+        assert!(tokens3.contains(&"機械学習".to_string()), "マシンラーニング should be normalized to 機械学習");
+        
+        // Test clear dictionary
+        tokenizer.clear_user_dictionary();
+        let text4 = "AIとML";
+        let tokens4 = tokenizer.tokenize(text4);
+        assert!(!tokens4.contains(&"人工知能".to_string()), "After clearing, AI should not be normalized");
+    }
+    
+    #[test]
+    fn test_dictionary_score_boost() {
+        let mut tokenizer = JapaneseTokenizer::new();
+        
+        let entries = vec![
+            DictionaryEntry {
+                surface: "人工知能".to_string(),
+                variants: vec!["AI".to_string()],
+            },
+        ];
+        
+        tokenizer.set_user_dictionary(entries);
+        
+        // Dictionary word should have higher score
+        let dict_score = tokenizer.calculate_token_score("人工知能", 5, 10);
+        let normal_score = tokenizer.calculate_token_score("普通単語", 5, 10);
+        
+        assert!(dict_score > normal_score, "Dictionary words should have higher scores");
     }
 }

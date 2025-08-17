@@ -1,6 +1,8 @@
+use crate::tokenizer::{JapaneseTokenizer, DictionaryEntry};
 use crate::utils::l2_normalize;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use serde_json;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -10,6 +12,7 @@ pub struct StableHashEmbedder {
     dimension: usize,
     char_ngram_size: usize,
     seed: u64,
+    tokenizer: JapaneseTokenizer,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -20,6 +23,7 @@ impl StableHashEmbedder {
             dimension,
             char_ngram_size,
             seed: 42, // Fixed seed for stability
+            tokenizer: JapaneseTokenizer::new(),
         }
     }
 
@@ -29,6 +33,7 @@ impl StableHashEmbedder {
             dimension,
             char_ngram_size,
             seed,
+            tokenizer: JapaneseTokenizer::new(),
         }
     }
 
@@ -36,17 +41,25 @@ impl StableHashEmbedder {
     pub fn transform(&self, text: &str) -> Vec<f32> {
         let mut embedding = vec![0.0f32; self.dimension];
         
-        // Generate character n-grams
-        let chars: Vec<char> = text.chars().filter(|c| !c.is_whitespace()).collect();
-        
-        if chars.len() < self.char_ngram_size {
-            // Handle short texts
-            self.hash_and_accumulate(&text, &mut embedding);
+        // Use tokenizer if dictionary is present
+        if self.tokenizer.user_dictionary.is_some() {
+            let tokens = self.tokenizer.tokenize(text);
+            for token in tokens {
+                self.hash_and_accumulate(&token, &mut embedding);
+            }
         } else {
-            // Generate n-grams
-            for i in 0..=chars.len() - self.char_ngram_size {
-                let ngram: String = chars[i..i + self.char_ngram_size].iter().collect();
-                self.hash_and_accumulate(&ngram, &mut embedding);
+            // Generate character n-grams (original behavior)
+            let chars: Vec<char> = text.chars().filter(|c| !c.is_whitespace()).collect();
+            
+            if chars.len() < self.char_ngram_size {
+                // Handle short texts
+                self.hash_and_accumulate(&text, &mut embedding);
+            } else {
+                // Generate n-grams
+                for i in 0..=chars.len() - self.char_ngram_size {
+                    let ngram: String = chars[i..i + self.char_ngram_size].iter().collect();
+                    self.hash_and_accumulate(&ngram, &mut embedding);
+                }
             }
         }
         
@@ -135,6 +148,30 @@ impl StableHashEmbedder {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn get_ngram_size(&self) -> usize {
         self.char_ngram_size
+    }
+    
+    #[cfg(target_arch = "wasm32")]
+    #[wasm_bindgen]
+    pub fn set_dictionary(&mut self, dictionary_json: &str) -> Result<(), JsValue> {
+        let entries: Vec<DictionaryEntry> = serde_json::from_str(dictionary_json)
+            .map_err(|e| JsValue::from_str(&format!("Failed to parse dictionary: {}", e)))?;
+        
+        self.tokenizer.set_user_dictionary(entries);
+        Ok(())
+    }
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn set_dictionary(&mut self, dictionary_json: &str) -> Result<(), String> {
+        let entries: Vec<DictionaryEntry> = serde_json::from_str(dictionary_json)
+            .map_err(|e| format!("Failed to parse dictionary: {}", e))?;
+        
+        self.tokenizer.set_user_dictionary(entries);
+        Ok(())
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn clear_dictionary(&mut self) {
+        self.tokenizer.clear_user_dictionary();
     }
 }
 

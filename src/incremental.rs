@@ -1,4 +1,4 @@
-use crate::tokenizer::JapaneseTokenizer;
+use crate::tokenizer::{JapaneseTokenizer, DictionaryEntry};
 use crate::tfidf_lsa::TfIdfLsa;
 use crate::utils::{cosine_similarity, l2_normalize};
 use serde::{Deserialize, Serialize};
@@ -249,6 +249,20 @@ impl IncrementalEmbedder {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn contains_document(&self, text: &str) -> bool {
         self.document_set.contains(text)
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn set_dictionary(&mut self, dictionary_json: &str) -> Result<(), JsValue> {
+        let entries: Vec<DictionaryEntry> = serde_json::from_str(dictionary_json)
+            .map_err(|e| create_error(&format!("Failed to parse dictionary: {}", e)))?;
+        
+        self.tokenizer.set_user_dictionary(entries);
+        Ok(())
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn clear_dictionary(&mut self) {
+        self.tokenizer.clear_user_dictionary();
     }
 }
 

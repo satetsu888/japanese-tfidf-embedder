@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Text Vector - User Dictionary Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+            border-left: 4px solid #667eea;
+            padding-left: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .card h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #666;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .tokens {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .token {
+            background: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            border: 1px solid #dee2e6;
+        }
+        .token.dictionary {
+            background: #d4edda;
+            border-color: #28a745;
+            font-weight: bold;
+        }
+        .token.normal {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+        .status {
+            padding: 8px 16px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.ready { 
+            background: #d4edda; 
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.loading { 
+            background: #fff3cd; 
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        .status.error { 
+            background: #f8d7da; 
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .example-dictionary {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .similarity-score {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            padding: 20px;
+            background: #f0f4ff;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .comparison-card {
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            border: 2px solid #e0e0e0;
+        }
+        .comparison-card h4 {
+            margin: 0 0 10px 0;
+            color: #666;
+        }
+        .highlight {
+            background: #fff59d;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Japanese Text Vector - User Dictionary Demo</h1>
+        
+        <div class="status" id="status">Loading WASM module...</div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>📚 User Dictionary Configuration</h3>
+                
+                <div class="input-group">
+                    <label for="dictionary">Dictionary Entries (JSON format):</label>
+                    <textarea id="dictionary" rows="12" placeholder='[
+  {
+    "surface": "人工知能",
+    "variants": ["AI", "エーアイ", "Artificial Intelligence"]
+  },
+  {
+    "surface": "機械学習",
+    "variants": ["ML", "マシンラーニング", "Machine Learning"]
+  }
+]'>[
+  {
+    "surface": "人工知能",
+    "variants": ["AI", "エーアイ", "Artificial Intelligence"]
+  },
+  {
+    "surface": "機械学習",
+    "variants": ["ML", "マシンラーニング", "Machine Learning"]
+  },
+  {
+    "surface": "深層学習",
+    "variants": ["DL", "ディープラーニング", "Deep Learning"]
+  },
+  {
+    "surface": "自然言語処理",
+    "variants": ["NLP", "Natural Language Processing"]
+  },
+  {
+    "surface": "コンピュータビジョン",
+    "variants": ["CV", "Computer Vision", "画像認識"]
+  }
+]</textarea>
+                </div>
+                
+                <button onclick="applyDictionary()">Apply Dictionary</button>
+                <button onclick="clearDictionary()">Clear Dictionary</button>
+                <button onclick="loadExampleDictionary()">Load Example Dictionary</button>
+                
+                <div id="dictionaryStatus" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="card">
+                <h3>🔍 Test Text Processing</h3>
+                
+                <div class="input-group">
+                    <label for="testText">Input Text:</label>
+                    <textarea id="testText" rows="4" placeholder="Enter Japanese text to test dictionary normalization...">AIとMLの技術を使って、NLPやComputer Visionの研究をしています。ディープラーニングは人工知能の重要な分野です。</textarea>
+                </div>
+                
+                <button onclick="processText()">Process Text</button>
+                
+                <div id="processResult" class="result" style="display: none;">
+                    <h4>Tokenization Result:</h4>
+                    <div id="tokens" class="tokens"></div>
+                </div>
+            </div>
+        </div>
+
+        <h2>📊 Similarity Comparison</h2>
+        
+        <div class="card">
+            <div class="input-group">
+                <label for="text1">Text 1:</label>
+                <input type="text" id="text1" value="AIとMLの研究" placeholder="Enter first text...">
+            </div>
+            
+            <div class="input-group">
+                <label for="text2">Text 2:</label>
+                <input type="text" id="text2" value="人工知能と機械学習の研究" placeholder="Enter second text...">
+            </div>
+            
+            <button onclick="calculateSimilarity()">Calculate Similarity</button>
+            
+            <div class="comparison-grid" id="comparisonResult" style="display: none;">
+                <div class="comparison-card">
+                    <h4>Without Dictionary</h4>
+                    <div class="similarity-score" id="similarityWithout">-</div>
+                    <div id="tokensWithout" class="tokens"></div>
+                </div>
+                <div class="comparison-card">
+                    <h4>With Dictionary</h4>
+                    <div class="similarity-score" id="similarityWith">-</div>
+                    <div id="tokensWith" class="tokens"></div>
+                </div>
+            </div>
+        </div>
+
+        <h2>💡 How It Works</h2>
+        
+        <div class="card">
+            <p>This demo shows how user dictionaries can improve text vectorization:</p>
+            <ul>
+                <li><strong>Surface Form:</strong> The normalized/canonical representation of a term</li>
+                <li><strong>Variants:</strong> Alternative spellings, abbreviations, or synonyms that map to the surface form</li>
+                <li><strong>Tokenization:</strong> When processing text, variants are automatically replaced with their surface forms</li>
+                <li><strong>Similarity:</strong> Documents using different variants of the same concept will have higher similarity scores</li>
+            </ul>
+            
+            <div class="example-dictionary">
+                <strong>Example Benefits:</strong>
+                <ul>
+                    <li>"AI" → "人工知能" (English abbreviation to Japanese)</li>
+                    <li>"エーアイ" → "人工知能" (Katakana to Kanji)</li>
+                    <li>"ML" → "機械学習" (Technical abbreviations)</li>
+                    <li>Improves cross-language and cross-script matching</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { IncrementalEmbedder, StableHashEmbedder } from '../pkg/japanese_text_vector.js';
+        
+        let embedderWithDict = null;
+        let embedderWithoutDict = null;
+        let isReady = false;
+        let currentDictionary = null;
+
+        async function initialize() {
+            try {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = 'Loading WASM module...';
+                statusEl.className = 'status loading';
+                
+                await init();
+                
+                // Initialize two embedders for comparison
+                // Use higher update threshold to prevent automatic retraining during document addition
+                embedderWithDict = new IncrementalEmbedder(2.0);
+                embedderWithoutDict = new IncrementalEmbedder(2.0);
+                
+                // Apply default dictionary to embedderWithDict BEFORE adding documents
+                const defaultDict = [
+                    {
+                        "surface": "人工知能",
+                        "variants": ["AI", "エーアイ", "Artificial Intelligence"]
+                    },
+                    {
+                        "surface": "機械学習",
+                        "variants": ["ML", "マシンラーニング", "Machine Learning"]
+                    },
+                    {
+                        "surface": "深層学習",
+                        "variants": ["DL", "ディープラーニング", "Deep Learning"]
+                    },
+                    {
+                        "surface": "自然言語処理",
+                        "variants": ["NLP", "Natural Language Processing"]
+                    },
+                    {
+                        "surface": "コンピュータビジョン",
+                        "variants": ["CV", "Computer Vision", "画像認識"]
+                    }
+                ];
+                
+                // Set the dictionary for embedderWithDict
+                embedderWithDict.set_dictionary(JSON.stringify(defaultDict));
+                currentDictionary = defaultDict;
+                document.getElementById('dictionary').value = JSON.stringify(defaultDict, null, 2);
+                
+                // Add some sample documents to both
+                const sampleDocs = [
+                    "人工知能の研究開発",
+                    "機械学習アルゴリズム",
+                    "深層学習モデル",
+                    "自然言語処理技術",
+                    "AIとMLの技術革新",
+                    "ディープラーニングの応用",
+                    "コンピュータビジョンの発展",
+                    "自然言語処理の最新動向",
+                    "エーアイによる画像認識",
+                    "NLPとCVの融合技術"
+                ];
+                
+                for (const doc of sampleDocs) {
+                    embedderWithDict.add_document(doc, 64);
+                    embedderWithoutDict.add_document(doc, 64);
+                }
+                
+                // Train the models by stepping through retraining
+                statusEl.textContent = 'Training models...';
+                
+                // Check if retraining is needed and start if not already in progress
+                try {
+                    embedderWithDict.start_background_retrain(64);
+                } catch (e) {
+                    // Already retraining, that's fine
+                    console.log('embedderWithDict already retraining');
+                }
+                
+                try {
+                    embedderWithoutDict.start_background_retrain(64);
+                } catch (e) {
+                    // Already retraining, that's fine
+                    console.log('embedderWithoutDict already retraining');
+                }
+                
+                // Train embedderWithDict
+                let maxSteps = 100;
+                for (let i = 0; i < maxSteps; i++) {
+                    const done = embedderWithDict.step_retrain();
+                    if (done) break;
+                }
+                
+                // Train embedderWithoutDict
+                for (let i = 0; i < maxSteps; i++) {
+                    const done = embedderWithoutDict.step_retrain();
+                    if (done) break;
+                }
+                
+                statusEl.textContent = 'Ready! Dictionary has been applied to one embedder for comparison.';
+                statusEl.className = 'status ready';
+                isReady = true;
+                
+            } catch (err) {
+                console.error('Initialization error:', err);
+                document.getElementById('status').textContent = `Error: ${err.message}`;
+                document.getElementById('status').className = 'status error';
+            }
+        }
+
+        window.applyDictionary = function() {
+            if (!isReady) {
+                alert('Please wait for initialization to complete');
+                return;
+            }
+            
+            const dictionaryText = document.getElementById('dictionary').value;
+            const statusEl = document.getElementById('dictionaryStatus');
+            
+            try {
+                // Parse to validate JSON
+                const dictionary = JSON.parse(dictionaryText);
+                
+                // Apply to the embedder with dictionary
+                embedderWithDict.set_dictionary(dictionaryText);
+                currentDictionary = dictionary;
+                
+                // Retrain the model after applying new dictionary
+                statusEl.style.display = 'block';
+                statusEl.innerHTML = `⏳ Dictionary applied, retraining model...`;
+                
+                // Start retraining
+                embedderWithDict.start_background_retrain(64);
+                
+                // Step through retraining
+                let steps = 0;
+                const retrainInterval = setInterval(() => {
+                    const done = embedderWithDict.step_retrain();
+                    steps++;
+                    if (done || steps > 100) {
+                        clearInterval(retrainInterval);
+                        statusEl.innerHTML = `✅ Dictionary applied and model retrained!<br>
+                            <strong>${dictionary.length}</strong> entries loaded with 
+                            <strong>${dictionary.reduce((sum, entry) => sum + entry.variants.length, 0)}</strong> variants total.`;
+                    }
+                }, 10);
+                    
+            } catch (err) {
+                statusEl.style.display = 'block';
+                statusEl.innerHTML = `❌ Error: ${err.message}<br>Please check your JSON format.`;
+            }
+        };
+
+        window.clearDictionary = function() {
+            if (!isReady) return;
+            
+            embedderWithDict.clear_dictionary();
+            currentDictionary = null;
+            
+            const statusEl = document.getElementById('dictionaryStatus');
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = '⏳ Dictionary cleared, retraining model...';
+            
+            // Retrain the model after clearing dictionary
+            embedderWithDict.start_background_retrain(64);
+            
+            // Step through retraining
+            let steps = 0;
+            const retrainInterval = setInterval(() => {
+                const done = embedderWithDict.step_retrain();
+                steps++;
+                if (done || steps > 100) {
+                    clearInterval(retrainInterval);
+                    statusEl.innerHTML = '🔄 Dictionary cleared and model retrained.';
+                }
+            }, 10);
+        };
+
+        window.loadExampleDictionary = function() {
+            const exampleDict = [
+                {
+                    "surface": "人工知能",
+                    "variants": ["AI", "エーアイ", "Artificial Intelligence", "A.I."]
+                },
+                {
+                    "surface": "機械学習",
+                    "variants": ["ML", "マシンラーニング", "Machine Learning", "マシーンラーニング"]
+                },
+                {
+                    "surface": "深層学習",
+                    "variants": ["DL", "ディープラーニング", "Deep Learning", "ディープ・ラーニング"]
+                },
+                {
+                    "surface": "自然言語処理",
+                    "variants": ["NLP", "Natural Language Processing", "言語処理"]
+                },
+                {
+                    "surface": "コンピュータビジョン",
+                    "variants": ["CV", "Computer Vision", "画像認識", "視覚認識"]
+                },
+                {
+                    "surface": "ニューラルネットワーク",
+                    "variants": ["NN", "Neural Network", "ニューラルネット"]
+                },
+                {
+                    "surface": "強化学習",
+                    "variants": ["RL", "Reinforcement Learning", "リインフォースメントラーニング"]
+                },
+                {
+                    "surface": "転移学習",
+                    "variants": ["Transfer Learning", "トランスファーラーニング", "ファインチューニング"]
+                }
+            ];
+            
+            document.getElementById('dictionary').value = JSON.stringify(exampleDict, null, 2);
+            applyDictionary();
+        };
+
+        window.processText = function() {
+            if (!isReady) return;
+            
+            const text = document.getElementById('testText').value;
+            if (!text) return;
+            
+            // This is a demonstration - actual tokenization happens internally
+            // We'll show the effect through similarity scores
+            const resultEl = document.getElementById('processResult');
+            const tokensEl = document.getElementById('tokens');
+            
+            resultEl.style.display = 'block';
+            tokensEl.innerHTML = '';
+            
+            // Simulate showing dictionary matches
+            if (currentDictionary) {
+                let processedText = text;
+                const matches = [];
+                
+                for (const entry of currentDictionary) {
+                    for (const variant of entry.variants) {
+                        if (text.includes(variant)) {
+                            matches.push({
+                                variant: variant,
+                                surface: entry.surface
+                            });
+                        }
+                    }
+                }
+                
+                // Display matches as tokens
+                if (matches.length > 0) {
+                    tokensEl.innerHTML = '<strong>Dictionary Matches Found:</strong><br>';
+                    for (const match of matches) {
+                        const tokenEl = document.createElement('span');
+                        tokenEl.className = 'token dictionary';
+                        tokenEl.textContent = `${match.variant} → ${match.surface}`;
+                        tokensEl.appendChild(tokenEl);
+                    }
+                } else {
+                    tokensEl.innerHTML = 'No dictionary matches found. Text will be tokenized using standard N-gram approach.';
+                }
+                
+                // Add sample n-grams
+                tokensEl.innerHTML += '<br><br><strong>Sample N-grams:</strong><br>';
+                const sampleTokens = ['研究', 'して', 'います', '技術', '使って'];
+                for (const token of sampleTokens) {
+                    if (text.includes(token)) {
+                        const tokenEl = document.createElement('span');
+                        tokenEl.className = 'token normal';
+                        tokenEl.textContent = token;
+                        tokensEl.appendChild(tokenEl);
+                    }
+                }
+            } else {
+                tokensEl.innerHTML = 'No dictionary applied. Using standard N-gram tokenization.';
+            }
+        };
+
+        window.calculateSimilarity = function() {
+            if (!isReady) return;
+            
+            const text1 = document.getElementById('text1').value;
+            const text2 = document.getElementById('text2').value;
+            
+            if (!text1 || !text2) {
+                alert('Please enter both texts');
+                return;
+            }
+            
+            // Calculate similarity with and without dictionary
+            const simWithDict = embedderWithDict.get_similarity(text1, text2);
+            const simWithoutDict = embedderWithoutDict.get_similarity(text1, text2);
+            
+            // Display results
+            const resultEl = document.getElementById('comparisonResult');
+            resultEl.style.display = 'block';
+            
+            document.getElementById('similarityWithout').textContent = 
+                (simWithoutDict * 100).toFixed(1) + '%';
+            document.getElementById('similarityWith').textContent = 
+                (simWithDict * 100).toFixed(1) + '%';
+            
+            // Show token differences (simulated)
+            const tokensWithoutEl = document.getElementById('tokensWithout');
+            const tokensWithEl = document.getElementById('tokensWith');
+            
+            tokensWithoutEl.innerHTML = '<small>Standard tokenization preserves original forms</small>';
+            tokensWithEl.innerHTML = '<small>Dictionary normalizes variants to surface forms</small>';
+            
+            // Highlight improvement
+            if (simWithDict > simWithoutDict) {
+                document.getElementById('similarityWith').style.background = '#d4edda';
+            }
+        };
+
+        // Initialize on load
+        initialize();
+    </script>
+</body>
+</html>
