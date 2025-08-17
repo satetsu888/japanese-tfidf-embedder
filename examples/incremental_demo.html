@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incremental Learning Demo - Japanese Text Vector</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .panel h2 {
+            color: #495057;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+        .document-list {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .document-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: #e9ecef;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .document-item.new {
+            animation: slideIn 0.3s ease-out;
+            background: #d4edda;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .progress-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .progress {
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 30px;
+            position: relative;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .category-selector {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .category-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .category-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .similarity-matrix {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .matrix-row {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .matrix-cell {
+            width: 60px;
+            padding: 5px;
+            text-align: center;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 12px;
+        }
+        .heat-0 { background: #f0f0f0; }
+        .heat-1 { background: #e3f2fd; }
+        .heat-2 { background: #90caf9; }
+        .heat-3 { background: #42a5f5; }
+        .heat-4 { background: #1976d2; color: white; }
+        .heat-5 { background: #0d47a1; color: white; }
+        .performance-chart {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .alert-info {
+            background: #cfe2ff;
+            border: 1px solid #b6d4fe;
+            color: #084298;
+        }
+        .alert-success {
+            background: #d1e7dd;
+            border: 1px solid #badbcc;
+            color: #0f5132;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 段階的学習デモ - リアルタイム文書ベクトル化</h1>
+        
+        <div class="alert alert-info" id="status">
+            WASMモジュールを読み込み中...
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>📝 文書追加</h2>
+                
+                <div class="category-selector">
+                    <div class="category-btn" onclick="addSampleDoc('weather')">天気</div>
+                    <div class="category-btn" onclick="addSampleDoc('food')">食事</div>
+                    <div class="category-btn" onclick="addSampleDoc('entertainment')">娯楽</div>
+                    <div class="category-btn" onclick="addSampleDoc('sports')">スポーツ</div>
+                    <div class="category-btn" onclick="addSampleDoc('tech')">技術</div>
+                </div>
+                
+                <textarea id="new-doc" rows="3" placeholder="文書を入力してください..."></textarea>
+                
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button onclick="addDocument()">文書を追加</button>
+                    <button onclick="addBatch()">10件一括追加</button>
+                    <button onclick="clearDocuments()">すべてクリア</button>
+                </div>
+
+                <div class="document-list" id="document-list">
+                    <!-- Documents will be listed here -->
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>📊 モデル統計</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="doc-count">0</div>
+                        <div class="stat-label">文書数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="vocab-size">0</div>
+                        <div class="stat-label">語彙サイズ</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="embedding-dim">64</div>
+                        <div class="stat-label">埋め込み次元</div>
+                    </div>
+                </div>
+
+                <div class="progress-container">
+                    <h3>再学習状態</h3>
+                    <div class="progress">
+                        <div class="progress-bar" id="progress-bar" style="width: 0%">
+                            <span id="progress-text">待機中</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button onclick="forceRetrain()" id="retrain-btn">再学習を強制実行</button>
+                        <button onclick="exportModel()">モデルをエクスポート</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 30px;">
+            <h2>🔍 類似度分析</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3>テスト文書</h3>
+                    <textarea id="test-doc" rows="2" placeholder="類似文書を検索...">今日の天気はどうですか？</textarea>
+                    <button onclick="findSimilar()">類似文書を検索</button>
+                    
+                    <div id="similar-results" style="margin-top: 15px;">
+                        <!-- Similar documents will be shown here -->
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>類似度ヒートマップ</h3>
+                    <div class="similarity-matrix" id="similarity-matrix">
+                        <!-- Heatmap will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel" style="margin-top: 30px;">
+            <h2>⚡ パフォーマンス</h2>
+            <div class="performance-chart" id="performance">
+                <div>ベクトル化速度: <span id="embed-speed">-</span> ms/文書</div>
+                <div>再学習頻度: <span id="retrain-freq">0</span> 回</div>
+                <div>メモリ使用量(推定): <span id="memory-usage">-</span> KB</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { IncrementalEmbedder } from '../pkg/japanese_text_vector.js';
+
+        let embedder;
+        let documents = [];
+        let retrainCount = 0;
+        let embedTimes = [];
+
+        const sampleDocs = {
+            weather: [
+                "今日は天気がいいですね",
+                "明日は雨が降りそうです",
+                "台風が接近しています",
+                "晴れた日には散歩がしたい",
+                "雪が降り始めました"
+            ],
+            food: [
+                "美味しいラーメンを見つけました",
+                "今日のランチはカレーです",
+                "お腹が空いたのでご飯を食べます",
+                "新しいカフェがオープンしました",
+                "寿司を食べに行きました"
+            ],
+            entertainment: [
+                "映画を見に行きました",
+                "新しい本を読んでいます",
+                "ゲームを楽しんでいます",
+                "コンサートに行く予定です",
+                "美術館で展覧会を見ました"
+            ],
+            sports: [
+                "サッカーの試合を観戦しました",
+                "ジョギングで汗を流しました",
+                "野球のシーズンが始まりました",
+                "テニスを練習しています",
+                "マラソン大会に参加します"
+            ],
+            tech: [
+                "新しいプログラミング言語を学んでいます",
+                "AIの技術が進化しています",
+                "スマートフォンを買い替えました",
+                "クラウドサービスを利用しています",
+                "機械学習のモデルを訓練中です"
+            ]
+        };
+
+        async function initialize() {
+            try {
+                await init();
+                
+                embedder = new IncrementalEmbedder(0.2);
+                
+                // Add initial documents
+                const initialDocs = [
+                    "システムを初期化しています",
+                    "文書ベクトル化の準備完了",
+                    "段階的学習を開始します"
+                ];
+                
+                for (const doc of initialDocs) {
+                    await addDocumentInternal(doc);
+                }
+                
+                document.getElementById('status').className = 'alert alert-success';
+                document.getElementById('status').textContent = '✅ システム準備完了 - 文書を追加してください';
+                
+                // Make functions globally available
+                window.addDocument = addDocument;
+                window.addBatch = addBatch;
+                window.clearDocuments = clearDocuments;
+                window.forceRetrain = forceRetrain;
+                window.exportModel = exportModel;
+                window.findSimilar = findSimilar;
+                window.addSampleDoc = addSampleDoc;
+                
+                updateUI();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                document.getElementById('status').textContent = 'エラー: ' + error.message;
+            }
+        }
+
+        async function addDocumentInternal(text) {
+            const startTime = performance.now();
+            
+            embedder.add_document(text, 64);
+            documents.push(text);
+            
+            const endTime = performance.now();
+            embedTimes.push(endTime - startTime);
+            if (embedTimes.length > 100) embedTimes.shift();
+            
+            // Check if retraining started
+            if (embedder.is_retraining()) {
+                retrainCount++;
+                monitorRetraining();
+            }
+            
+            return true;
+        }
+
+        function addDocument() {
+            const text = document.getElementById('new-doc').value.trim();
+            if (!text) return;
+            
+            addDocumentInternal(text);
+            document.getElementById('new-doc').value = '';
+            
+            // Add to visual list
+            addToDocumentList(text, true);
+            updateUI();
+        }
+
+        function addSampleDoc(category) {
+            const docs = sampleDocs[category];
+            const doc = docs[Math.floor(Math.random() * docs.length)];
+            document.getElementById('new-doc').value = doc;
+        }
+
+        async function addBatch() {
+            const categories = Object.keys(sampleDocs);
+            for (let i = 0; i < 10; i++) {
+                const category = categories[Math.floor(Math.random() * categories.length)];
+                const docs = sampleDocs[category];
+                const doc = docs[Math.floor(Math.random() * docs.length)];
+                
+                await addDocumentInternal(doc);
+                addToDocumentList(doc, i === 9);
+            }
+            updateUI();
+        }
+
+        function clearDocuments() {
+            documents = [];
+            embedder = new IncrementalEmbedder(0.2);
+            document.getElementById('document-list').innerHTML = '';
+            retrainCount = 0;
+            embedTimes = [];
+            updateUI();
+        }
+
+        function addToDocumentList(text, isNew = false) {
+            const list = document.getElementById('document-list');
+            const item = document.createElement('div');
+            item.className = isNew ? 'document-item new' : 'document-item';
+            item.innerHTML = `
+                <span>${text.substring(0, 50)}${text.length > 50 ? '...' : ''}</span>
+                <small>#${documents.length}</small>
+            `;
+            list.insertBefore(item, list.firstChild);
+            
+            // Keep only last 20 items in view
+            while (list.children.length > 20) {
+                list.removeChild(list.lastChild);
+            }
+        }
+
+        function forceRetrain() {
+            embedder.start_background_retrain(64);
+            retrainCount++;
+            monitorRetraining();
+        }
+
+        function monitorRetraining() {
+            document.getElementById('retrain-btn').disabled = true;
+            
+            const interval = setInterval(() => {
+                const complete = embedder.step_retrain();
+                const progress = embedder.get_retrain_progress();
+                
+                document.getElementById('progress-bar').style.width = (progress * 100) + '%';
+                document.getElementById('progress-text').textContent = 
+                    complete ? '完了' : `${Math.round(progress * 100)}%`;
+                
+                if (complete) {
+                    clearInterval(interval);
+                    document.getElementById('retrain-btn').disabled = false;
+                    updateUI();
+                    setTimeout(() => {
+                        document.getElementById('progress-bar').style.width = '0%';
+                        document.getElementById('progress-text').textContent = '待機中';
+                    }, 2000);
+                }
+            }, 50);
+        }
+
+        function exportModel() {
+            try {
+                const modelJson = embedder.export_model();
+                const blob = new Blob([modelJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'model.json';
+                a.click();
+            } catch (error) {
+                alert('エクスポートエラー: ' + error.message);
+            }
+        }
+
+        function findSimilar() {
+            const query = document.getElementById('test-doc').value.trim();
+            if (!query || documents.length === 0) return;
+            
+            const results = documents.map(doc => {
+                const similarity = embedder.get_similarity(query, doc);
+                return { doc, similarity };
+            });
+            
+            results.sort((a, b) => b.similarity - a.similarity);
+            
+            const html = results.slice(0, 5).map((result, index) => `
+                <div style="padding: 8px; margin: 5px 0; background: #f8f9fa; border-radius: 5px;">
+                    <strong>#${index + 1}</strong> (${result.similarity.toFixed(3)})
+                    <br>${result.doc}
+                </div>
+            `).join('');
+            
+            document.getElementById('similar-results').innerHTML = html;
+            
+            // Update heatmap
+            updateHeatmap(results.slice(0, 5));
+        }
+
+        function updateHeatmap(topDocs) {
+            if (topDocs.length < 2) return;
+            
+            let html = '<div style="font-size: 12px; margin-bottom: 10px;">上位5件の相互類似度</div>';
+            
+            for (let i = 0; i < topDocs.length; i++) {
+                html += '<div class="matrix-row">';
+                for (let j = 0; j < topDocs.length; j++) {
+                    if (i === j) {
+                        html += '<div class="matrix-cell heat-5">1.00</div>';
+                    } else {
+                        const sim = embedder.get_similarity(topDocs[i].doc, topDocs[j].doc);
+                        const heat = Math.floor(sim * 5);
+                        html += `<div class="matrix-cell heat-${heat}">${sim.toFixed(2)}</div>`;
+                    }
+                }
+                html += '</div>';
+            }
+            
+            document.getElementById('similarity-matrix').innerHTML = html;
+        }
+
+        function updateUI() {
+            document.getElementById('doc-count').textContent = embedder.get_document_count();
+            document.getElementById('vocab-size').textContent = embedder.get_vocab_size();
+            document.getElementById('embedding-dim').textContent = embedder.get_embedding_dim();
+            
+            // Update performance metrics
+            if (embedTimes.length > 0) {
+                const avgTime = embedTimes.reduce((a, b) => a + b, 0) / embedTimes.length;
+                document.getElementById('embed-speed').textContent = avgTime.toFixed(2);
+            }
+            
+            document.getElementById('retrain-freq').textContent = retrainCount;
+            
+            // Estimate memory usage
+            const vocabSize = embedder.get_vocab_size();
+            const docCount = embedder.get_document_count();
+            const estimatedMemory = (vocabSize * 4 + docCount * 100) / 1024; // Very rough estimate
+            document.getElementById('memory-usage').textContent = estimatedMemory.toFixed(1);
+        }
+
+        // Initialize on page load
+        initialize();
+        
+        // Auto-update UI periodically
+        setInterval(updateUI, 2000);
+    </script>
+</body>
+</html>

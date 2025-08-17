@@ -1,0 +1,25 @@
+{
+  "name": "japanese-text-vector",
+  "version": "0.1.0",
+  "description": "Lightweight Japanese text vectorization library with TF-IDF + LSA",
+  "main": "pkg/japanese_text_vector.js",
+  "scripts": {
+    "build": "wasm-pack build --target web --out-dir pkg",
+    "build:node": "wasm-pack build --target nodejs --out-dir pkg-node",
+    "test": "wasm-pack test --chrome --headless",
+    "serve": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "japanese",
+    "text",
+    "vectorization",
+    "tfidf",
+    "lsa",
+    "wasm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wasm-pack": "^0.12.0"
+  }
+}

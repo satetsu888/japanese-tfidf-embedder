@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Text Vector - Basic Usage</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #666;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #007bff;
+        }
+        .similarity-result {
+            padding: 10px;
+            margin: 10px 0;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+        .progress {
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            height: 20px;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            background: #007bff;
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .status.ready { background: #28a745; color: white; }
+        .status.loading { background: #ffc107; color: black; }
+        .status.error { background: #dc3545; color: white; }
+        .embedding-display {
+            font-family: monospace;
+            font-size: 12px;
+            background: #f1f3f4;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🇯🇵 日本語テキストベクトル化ライブラリ - デモ</h1>
+        
+        <div class="status loading" id="status">Loading WASM module...</div>
+
+        <h2>1. StableHashEmbedder (安定ハッシュ版)</h2>
+        <p>文書追加に影響されない安定したベクトル化</p>
+        
+        <div class="input-group">
+            <label for="stable-text">テキスト入力:</label>
+            <textarea id="stable-text" rows="3" placeholder="例: 今日は天気がいいですね">今日は天気がいいですね</textarea>
+        </div>
+        
+        <button onclick="computeStableEmbedding()">ベクトル化</button>
+        
+        <div id="stable-result" class="result" style="display:none;">
+            <strong>ベクトル (64次元):</strong>
+            <div id="stable-embedding" class="embedding-display"></div>
+        </div>
+
+        <h2>2. IncrementalEmbedder (段階的学習版)</h2>
+        <p>文書を追加しながら学習・更新</p>
+        
+        <div class="input-group">
+            <label for="incremental-doc">文書を追加:</label>
+            <textarea id="incremental-doc" rows="3" placeholder="例: 明日は雨が降りそうです"></textarea>
+        </div>
+        
+        <button onclick="addDocument()">文書追加</button>
+        <button onclick="forceRetrain()">再学習を強制実行</button>
+        
+        <div class="result">
+            <strong>統計情報:</strong>
+            <div>文書数: <span id="doc-count">0</span></div>
+            <div>語彙サイズ: <span id="vocab-size">0</span></div>
+            <div>埋め込み次元: <span id="embedding-dim">64</span></div>
+            <div id="retrain-progress" style="display:none;">
+                <div>再学習中...</div>
+                <div class="progress">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <h2>3. 類似度計算</h2>
+        <p>2つのテキストの意味的類似度を計算</p>
+        
+        <div class="input-group">
+            <label for="text1">テキスト1:</label>
+            <input type="text" id="text1" value="今日は映画を見ました" />
+        </div>
+        
+        <div class="input-group">
+            <label for="text2">テキスト2:</label>
+            <input type="text" id="text2" value="今日は映画を観賞しました" />
+        </div>
+        
+        <button onclick="calculateSimilarity()">類似度計算</button>
+        
+        <div id="similarity-result" class="similarity-result" style="display:none;">
+            <strong>コサイン類似度:</strong> <span id="similarity-score"></span>
+            <div style="margin-top: 10px;">
+                <small>(-1.0 = 完全に異なる, 0.0 = 無関係, 1.0 = 完全に同じ)</small>
+            </div>
+        </div>
+
+        <h2>4. バッチ類似検索</h2>
+        <p>クエリに対して最も類似した文書を検索</p>
+        
+        <div class="input-group">
+            <label for="query">検索クエリ:</label>
+            <input type="text" id="query" value="天気の話" />
+        </div>
+        
+        <div class="input-group">
+            <label for="candidates">候補文書 (1行1文書):</label>
+            <textarea id="candidates" rows="6">今日は天気がいいですね
+明日は雨が降りそうです
+美味しいラーメンを見つけました
+新しい映画を見に行きました
+晴れた日には散歩がしたい</textarea>
+        </div>
+        
+        <button onclick="searchSimilar()">類似検索実行</button>
+        
+        <div id="search-results" class="result" style="display:none;">
+            <strong>検索結果 (類似度順):</strong>
+            <div id="search-list"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { 
+            IncrementalEmbedder, 
+            StableHashEmbedder 
+        } from '../pkg/japanese_text_vector.js';
+
+        let stableEmbedder;
+        let incrementalEmbedder;
+        let retrainInterval;
+
+        async function initialize() {
+            try {
+                await init();
+                
+                // Initialize embedders
+                stableEmbedder = new StableHashEmbedder(64, 2);
+                incrementalEmbedder = new IncrementalEmbedder(0.3);
+                
+                // Add initial documents
+                const initialDocs = [
+                    "今日は天気がいいですね",
+                    "明日は雨が降りそうです",
+                    "美味しいラーメンを見つけました"
+                ];
+                
+                for (const doc of initialDocs) {
+                    incrementalEmbedder.add_document(doc, 64);
+                }
+                
+                updateStats();
+                
+                document.getElementById('status').className = 'status ready';
+                document.getElementById('status').textContent = 'Ready';
+                
+                // Make functions globally available
+                window.computeStableEmbedding = computeStableEmbedding;
+                window.addDocument = addDocument;
+                window.forceRetrain = forceRetrain;
+                window.calculateSimilarity = calculateSimilarity;
+                window.searchSimilar = searchSimilar;
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function computeStableEmbedding() {
+            const text = document.getElementById('stable-text').value;
+            if (!text) return;
+            
+            const embedding = stableEmbedder.transform(text);
+            
+            // Display embedding (first 10 values for brevity)
+            const display = embedding.slice(0, 10).map(v => v.toFixed(4)).join(', ');
+            document.getElementById('stable-embedding').textContent = 
+                `[${display}, ... (${embedding.length - 10} more values)]`;
+            document.getElementById('stable-result').style.display = 'block';
+        }
+
+        function addDocument() {
+            const text = document.getElementById('incremental-doc').value;
+            if (!text) return;
+            
+            incrementalEmbedder.add_document(text, 64);
+            document.getElementById('incremental-doc').value = '';
+            
+            updateStats();
+            
+            // Check if retraining started
+            if (incrementalEmbedder.is_retraining()) {
+                startRetrainMonitor();
+            }
+        }
+
+        function forceRetrain() {
+            incrementalEmbedder.start_background_retrain(64);
+            startRetrainMonitor();
+        }
+
+        function startRetrainMonitor() {
+            document.getElementById('retrain-progress').style.display = 'block';
+            
+            if (retrainInterval) clearInterval(retrainInterval);
+            
+            retrainInterval = setInterval(() => {
+                const complete = incrementalEmbedder.step_retrain();
+                const progress = incrementalEmbedder.get_retrain_progress();
+                
+                document.getElementById('progress-bar').style.width = (progress * 100) + '%';
+                
+                if (complete) {
+                    clearInterval(retrainInterval);
+                    document.getElementById('retrain-progress').style.display = 'none';
+                    updateStats();
+                }
+            }, 50);
+        }
+
+        function updateStats() {
+            document.getElementById('doc-count').textContent = incrementalEmbedder.get_document_count();
+            document.getElementById('vocab-size').textContent = incrementalEmbedder.get_vocab_size();
+            document.getElementById('embedding-dim').textContent = incrementalEmbedder.get_embedding_dim();
+        }
+
+        function calculateSimilarity() {
+            const text1 = document.getElementById('text1').value;
+            const text2 = document.getElementById('text2').value;
+            
+            if (!text1 || !text2) return;
+            
+            const similarity = incrementalEmbedder.get_similarity(text1, text2);
+            
+            document.getElementById('similarity-score').textContent = similarity.toFixed(4);
+            document.getElementById('similarity-result').style.display = 'block';
+        }
+
+        function searchSimilar() {
+            const query = document.getElementById('query').value;
+            const candidatesText = document.getElementById('candidates').value;
+            
+            if (!query || !candidatesText) return;
+            
+            const candidates = candidatesText.split('\n').filter(line => line.trim());
+            
+            // Calculate similarities
+            const results = candidates.map(candidate => {
+                const similarity = incrementalEmbedder.get_similarity(query, candidate);
+                return { text: candidate, similarity };
+            });
+            
+            // Sort by similarity
+            results.sort((a, b) => b.similarity - a.similarity);
+            
+            // Display results
+            const html = results.map((result, index) => `
+                <div class="similarity-result">
+                    <strong>#${index + 1}</strong> (類似度: ${result.similarity.toFixed(4)})
+                    <br>${result.text}
+                </div>
+            `).join('');
+            
+            document.getElementById('search-list').innerHTML = html;
+            document.getElementById('search-results').style.display = 'block';
+        }
+
+        // Initialize on page load
+        initialize();
+    </script>
+</body>
+</html>
