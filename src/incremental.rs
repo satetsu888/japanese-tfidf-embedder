@@ -2,6 +2,7 @@ use crate::tokenizer::JapaneseTokenizer;
 use crate::tfidf_lsa::TfIdfLsa;
 use crate::utils::{cosine_similarity, l2_normalize};
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -16,6 +17,7 @@ pub struct IncrementalEmbedder {
     model: TfIdfLsa,
     documents: Vec<String>,
     tokenized_documents: Vec<Vec<String>>,
+    document_set: HashSet<String>,  // Track unique documents
     update_threshold: f32,
     changes_since_update: usize,
     is_retraining: bool,
@@ -44,6 +46,7 @@ impl IncrementalEmbedder {
             model: TfIdfLsa::new(64),
             documents: Vec::new(),
             tokenized_documents: Vec::new(),
+            document_set: HashSet::new(),
             update_threshold,
             changes_since_update: 0,
             is_retraining: false,
@@ -60,6 +63,7 @@ impl IncrementalEmbedder {
             model: TfIdfLsa::new(64),
             documents: Vec::new(),
             tokenized_documents: Vec::new(),
+            document_set: HashSet::new(),
             update_threshold,
             changes_since_update: 0,
             is_retraining: false,
@@ -71,7 +75,14 @@ impl IncrementalEmbedder {
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn add_document(&mut self, text: String, embedding_dim: usize) -> Result<(), JsValue> {
+        // Check if document already exists
+        if self.document_set.contains(&text) {
+            // Document already exists, skip adding
+            return Ok(());
+        }
+        
         // Add document to collection
+        self.document_set.insert(text.clone());
         self.documents.push(text.clone());
         let tokens = self.tokenizer.tokenize(&text);
         self.tokenized_documents.push(tokens);
@@ -226,6 +237,16 @@ impl IncrementalEmbedder {
     pub fn get_embedding_dim(&self) -> usize {
         self.model.embedding_dim()
     }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn get_unique_document_count(&self) -> usize {
+        self.document_set.len()
+    }
+
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn contains_document(&self, text: &str) -> bool {
+        self.document_set.contains(text)
+    }
 }
 
 // Non-WASM methods for internal use
@@ -308,5 +329,26 @@ mod tests {
         let restored = IncrementalEmbedder::import_model(&json).unwrap();
         
         assert_eq!(embedder.get_document_count(), restored.get_document_count());
+    }
+
+    #[test]
+    fn test_duplicate_document_detection() {
+        let mut embedder = IncrementalEmbedder::new(0.5);
+        
+        // Add the same document multiple times
+        embedder.add_document("同じ文書です".to_string(), 64).unwrap();
+        embedder.add_document("同じ文書です".to_string(), 64).unwrap();
+        embedder.add_document("同じ文書です".to_string(), 64).unwrap();
+        
+        // Should only have one document
+        assert_eq!(embedder.get_document_count(), 1);
+        
+        // Add a different document
+        embedder.add_document("違う文書です".to_string(), 64).unwrap();
+        assert_eq!(embedder.get_document_count(), 2);
+        
+        // Add the first document again
+        embedder.add_document("同じ文書です".to_string(), 64).unwrap();
+        assert_eq!(embedder.get_document_count(), 2); // Should still be 2
     }
 }

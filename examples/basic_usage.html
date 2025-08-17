@@ -140,9 +140,10 @@
         
         <div class="result">
             <strong>統計情報:</strong>
-            <div>文書数: <span id="doc-count">0</span></div>
+            <div>ユニーク文書数: <span id="doc-count">0</span></div>
             <div>語彙サイズ: <span id="vocab-size">0</span></div>
             <div>埋め込み次元: <span id="embedding-dim">64</span></div>
+            <div id="duplicate-message" style="color: #007bff; margin-top: 10px; display: none;"></div>
             <div id="retrain-progress" style="display:none;">
                 <div>再学習中...</div>
                 <div class="progress">
@@ -263,8 +264,23 @@
             const text = document.getElementById('incremental-doc').value;
             if (!text) return;
             
+            // Check if document is duplicate
+            const isDuplicate = incrementalEmbedder.contains_document(text);
+            
             incrementalEmbedder.add_document(text, 64);
             document.getElementById('incremental-doc').value = '';
+            
+            // Show duplicate message if needed
+            const messageEl = document.getElementById('duplicate-message');
+            if (isDuplicate) {
+                messageEl.textContent = '※ この文書は既に追加されています';
+                messageEl.style.display = 'block';
+                setTimeout(() => {
+                    messageEl.style.display = 'none';
+                }, 3000);
+            } else {
+                messageEl.style.display = 'none';
+            }
             
             updateStats();
             
@@ -299,7 +315,7 @@
         }
 
         function updateStats() {
-            document.getElementById('doc-count').textContent = incrementalEmbedder.get_document_count();
+            document.getElementById('doc-count').textContent = incrementalEmbedder.get_unique_document_count();
             document.getElementById('vocab-size').textContent = incrementalEmbedder.get_vocab_size();
             document.getElementById('embedding-dim').textContent = incrementalEmbedder.get_embedding_dim();
         }

@@ -8,9 +8,10 @@ WASM対応の軽量な日本語テキストベクトル化ライブラリです�
 - 🇯🇵 **日本語特化**: 文字N-gram、文字種別トークナイザーによる日本語最適化
 - 📈 **段階的学習**: 文書を追加しながら動的にモデルを更新
 - 🔍 **類似検索**: コサイン類似度による高速な類似文書検索
+- 🚫 **重複排除**: 同一文書の自動検出と排除
 - 💾 **永続化対応**: モデルのJSON形式でのエクスポート/インポート
 - 🔧 **2つの実装**:
-  - `IncrementalEmbedder`: 段階的学習対応の動的ベクトル化
+  - `IncrementalEmbedder`: 段階的学習対応の動的ベクトル化（重複検出機能付き）
   - `StableHashEmbedder`: 文書追加に影響されない安定ベクトル化
 
 ## インストール
@@ -62,6 +63,10 @@ cargo test
             // 文書の追加
             embedder.add_document("今日は天気がいいですね", 64);
             embedder.add_document("明日は雨が降りそうです", 64);
+            
+            // 重複文書は自動的に排除される
+            embedder.add_document("今日は天気がいいですね", 64);  // スキップされる
+            console.log("ユニーク文書数:", embedder.get_unique_document_count());  // 2
             
             // ベクトル化
             const embedding = embedder.transform("今日は晴れです");
@@ -120,6 +125,8 @@ new IncrementalEmbedder(update_threshold)
 | `get_retrain_progress()` | 再学習の進捗（0.0-1.0） |
 | `export_model()` | モデルをJSON形式でエクスポート |
 | `import_model(json_data)` | JSONからモデルを復元 |
+| `get_unique_document_count()` | ユニークな文書数を取得 |
+| `contains_document(text)` | 文書が既に追加されているか確認 |
 
 ### StableHashEmbedder
 

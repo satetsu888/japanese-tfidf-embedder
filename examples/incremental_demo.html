@@ -218,6 +218,11 @@
             border: 1px solid #badbcc;
             color: #0f5132;
         }
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffecb5;
+            color: #664d03;
+        }
     </style>
 </head>
 <body>
@@ -259,7 +264,7 @@
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value" id="doc-count">0</div>
-                        <div class="stat-label">文書数</div>
+                        <div class="stat-label">ユニーク文書数</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="vocab-size">0</div>
@@ -405,8 +410,14 @@
         async function addDocumentInternal(text) {
             const startTime = performance.now();
             
+            // Check if document already exists
+            const isDuplicate = embedder.contains_document(text);
+            
             embedder.add_document(text, 64);
-            documents.push(text);
+            
+            if (!isDuplicate) {
+                documents.push(text);
+            }
             
             const endTime = performance.now();
             embedTimes.push(endTime - startTime);
@@ -418,19 +429,33 @@
                 monitorRetraining();
             }
             
-            return true;
+            return !isDuplicate;  // Return whether document was new
         }
 
-        function addDocument() {
+        async function addDocument() {
             const text = document.getElementById('new-doc').value.trim();
             if (!text) return;
             
-            addDocumentInternal(text);
+            const wasAdded = await addDocumentInternal(text);
             document.getElementById('new-doc').value = '';
             
-            // Add to visual list
-            addToDocumentList(text, true);
+            if (wasAdded) {
+                // Add to visual list only if not duplicate
+                addToDocumentList(text, true);
+                document.getElementById('status').className = 'alert alert-success';
+                document.getElementById('status').textContent = '✅ 文書を追加しました';
+            } else {
+                document.getElementById('status').className = 'alert alert-info';
+                document.getElementById('status').textContent = 'ℹ️ この文書は既に追加されています';
+            }
+            
             updateUI();
+            
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                document.getElementById('status').className = 'alert alert-success';
+                document.getElementById('status').textContent = '✅ システム準備完了';
+            }, 3000);
         }
 
         function addSampleDoc(category) {
@@ -441,15 +466,39 @@
 
         async function addBatch() {
             const categories = Object.keys(sampleDocs);
+            let addedCount = 0;
+            let duplicateCount = 0;
+            
             for (let i = 0; i < 10; i++) {
                 const category = categories[Math.floor(Math.random() * categories.length)];
                 const docs = sampleDocs[category];
                 const doc = docs[Math.floor(Math.random() * docs.length)];
                 
-                await addDocumentInternal(doc);
-                addToDocumentList(doc, i === 9);
+                const wasAdded = await addDocumentInternal(doc);
+                if (wasAdded) {
+                    addToDocumentList(doc, i === 9);
+                    addedCount++;
+                } else {
+                    duplicateCount++;
+                }
             }
+            
+            // Show result message
+            if (duplicateCount > 0) {
+                document.getElementById('status').className = 'alert alert-info';
+                document.getElementById('status').textContent = `ℹ️ ${addedCount}件の新規文書を追加、${duplicateCount}件は重複のためスキップしました`;
+            } else {
+                document.getElementById('status').className = 'alert alert-success';
+                document.getElementById('status').textContent = `✅ ${addedCount}件の文書を追加しました`;
+            }
+            
             updateUI();
+            
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                document.getElementById('status').className = 'alert alert-success';
+                document.getElementById('status').textContent = '✅ システム準備完了';
+            }, 3000);
         }
 
         function clearDocuments() {
@@ -567,7 +616,7 @@
         }
 
         function updateUI() {
-            document.getElementById('doc-count').textContent = embedder.get_document_count();
+            document.getElementById('doc-count').textContent = embedder.get_unique_document_count();
             document.getElementById('vocab-size').textContent = embedder.get_vocab_size();
             document.getElementById('embedding-dim').textContent = embedder.get_embedding_dim();
             
