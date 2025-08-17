@@ -32,6 +32,12 @@ src/
 - **Duplicate Detection**: Automatic exclusion of identical documents using HashSet
 - **Background Processing**: Non-blocking retraining via step_retrain()
 - **Persistence**: Model save/restore in JSON format
+- **Training/Search Separation**: 
+  - `add_document_for_training()` - Add training-only documents (not searchable)
+  - `add_document()` - Add searchable documents (used for training and search)
+  - `find_similar()` - Fast similarity search using pre-computed vectors
+  - `find_similar_with_scores()` - Search with similarity scores (JSON format)
+  - `get_searchable_count()` - Get count of searchable documents
 
 ### 2. StableHashEmbedder (Stable Hash Version)
 
@@ -72,6 +78,14 @@ src/
 - Real-time incremental learning visualization
 - Duplicate detection demonstration
 - Performance metrics display
+
+### 3. training_search_demo.html
+
+- **Training vs Searchable documents separation**
+- Add training-only documents (not included in search results)
+- Add searchable documents (used for both training and search)
+- High-speed similarity search with pre-computed vectors
+- Manual and automatic retraining controls
 
 ## 🔧 Technical Optimizations
 
@@ -128,25 +142,34 @@ python3 -m http.server 8000
 
 ```javascript
 // IncrementalEmbedder - Incremental learning version
-const embedder = new IncrementalEmbedder(0.3);
+const embedder = new IncrementalEmbedder(0.1);
 
-// Add documents (duplicates automatically excluded)
-embedder.add_document("今日は天気がいいですね", 64);
-embedder.add_document("今日は天気がいいですね", 64); // Skipped
-
-// Vectorization
-const vector = embedder.transform("今日は晴れです");
-
-// Calculate similarity
-const similarity = embedder.get_similarity(
-    "今日は天気がいい",
-    "明日は天気が悪い"
-);
-
-// Check document existence
-if (!embedder.contains_document(text)) {
-    embedder.add_document(text, 64);
+// Add training-only documents (not searchable)
+const trainingDocs = loadWikipediaArticles(); // Large corpus
+for (const doc of trainingDocs) {
+    embedder.add_document_for_training(doc, 64);
 }
+
+// Add searchable documents (used for training + search)
+const searchableDocs = loadProductDescriptions(); // Actual search targets
+for (const doc of searchableDocs) {
+    embedder.add_document(doc, 64);
+}
+
+// Fast similarity search (only searches in searchable documents)
+const results = embedder.find_similar("ユーザーのクエリ", 10);
+console.log("Top 10 results:", results);
+
+// Search with scores
+const resultsWithScores = embedder.find_similar_with_scores("検索クエリ", 5);
+const parsed = JSON.parse(resultsWithScores);
+parsed.forEach(item => {
+    console.log(`Score: ${item.score}, Doc: ${item.document}`);
+});
+
+// Check counts
+console.log(`Training docs: ${embedder.get_unique_document_count()}`);
+console.log(`Searchable docs: ${embedder.get_searchable_count()}`);
 ```
 
 ## 🎯 Project Strengths

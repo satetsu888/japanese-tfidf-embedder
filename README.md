@@ -112,6 +112,57 @@ initializeEmbedder().then(embedder => {
 });
 ```
 
+### 学習用データと検索対象データの分離
+
+```javascript
+import init, { IncrementalEmbedder } from 'japanese-tfidf-embedder';
+
+async function setupSearchableEmbedder() {
+    await init();
+    const embedder = new IncrementalEmbedder(0.1);  // 低い閾値で頻繁に再学習
+    
+    // 大量の学習専用データ（検索結果には現れない）
+    const trainingData = [
+        "自然言語処理の基礎知識",
+        "機械学習アルゴリズムの種類",
+        "ニューラルネットワークの仕組み",
+        // ... 数百〜数千件の背景知識
+    ];
+    
+    for (const doc of trainingData) {
+        embedder.add_document_for_training(doc, 64);  // 学習のみに使用
+    }
+    
+    // 検索対象データ（学習にも使用され、検索結果として返される）
+    const searchableData = [
+        "Pythonで機械学習を始める方法",
+        "TensorFlowの基本的な使い方",
+        "PyTorchによるディープラーニング入門",
+        // ... 実際に検索したいドキュメント
+    ];
+    
+    for (const doc of searchableData) {
+        embedder.add_document(doc, 64);  // 学習＋検索対象
+    }
+    
+    // 高速類似検索（事前計算済みベクトルを使用）
+    const results = embedder.find_similar("機械学習の実装", 5);
+    console.log("Top 5 similar documents:", results);
+    
+    // スコア付き検索結果（JSON形式）
+    const resultsWithScores = embedder.find_similar_with_scores("AI開発", 3);
+    const parsed = JSON.parse(resultsWithScores);
+    parsed.forEach(item => {
+        console.log(`Score: ${item.score}, Doc: ${item.document}`);
+    });
+    
+    console.log(`検索対象: ${embedder.get_searchable_count()}件`);
+    console.log(`学習データ総数: ${embedder.get_unique_document_count()}件`);
+    
+    return embedder;
+}
+```
+
 ### ユーザー辞書の使用
 
 ```javascript
@@ -214,9 +265,13 @@ new IncrementalEmbedder(update_threshold)
 
 | メソッド | 説明 |
 |---------|------|
-| `add_document(text, embedding_dim)` | 文書を追加 |
+| `add_document(text, embedding_dim)` | 文書を追加（学習用＋検索対象） |
+| `add_document_for_training(text, embedding_dim)` | 学習専用文書を追加（検索対象外） |
 | `transform(text)` | テキストをベクトル化 |
 | `get_similarity(text1, text2)` | 2つのテキストの類似度を計算 |
+| `find_similar(query, top_k)` | 類似文書を高速検索（検索対象のみ） |
+| `find_similar_with_scores(query, top_k)` | スコア付きで類似文書を検索（JSON形式） |
+| `get_searchable_count()` | 検索対象文書数を取得 |
 | `start_background_retrain(embedding_dim)` | バックグラウンド再学習を開始 |
 | `step_retrain()` | 再学習を1ステップ実行 |
 | `is_retraining()` | 再学習中かどうか |
