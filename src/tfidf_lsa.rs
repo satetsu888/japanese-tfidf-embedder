@@ -1,4 +1,5 @@
 use nalgebra::{DMatrix, DVector};
+use nalgebra::linalg::SVD;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -89,61 +90,46 @@ impl TfIdfLsa {
         let (nrows, ncols) = tfidf_matrix.shape();
         let target_dim = self.embedding_dim.min(nrows).min(ncols);
         
-        // Use simplified PCA-like approach for dimensionality reduction
-        // Compute covariance matrix: C = X * X^T / n
-        let covariance = (&tfidf_matrix * tfidf_matrix.transpose()) / ncols as f32;
+        // Perform Singular Value Decomposition (SVD)
+        // TF-IDF matrix = U * Σ * V^T
+        // Where U contains left singular vectors (document-concept relationships)
+        // Σ contains singular values (importance of each concept)
+        // V^T contains right singular vectors (term-concept relationships)
+        let svd = SVD::new(tfidf_matrix.clone(), true, true);
         
-        // Use power iteration to find principal components
-        // This is a simplified approach optimized for WASM size constraints
-        // A full SVD implementation would be more accurate but significantly larger
-        let mut components = DMatrix::zeros(target_dim, nrows);
-        let mut used_vectors: Vec<DVector<f32>> = Vec::new();
-        
-        for i in 0..target_dim {
-            // Initialize random vector
-            let mut v = DVector::from_fn(nrows, |j, _| {
-                ((j + i * 13) as f32 * 0.61803398875).fract() - 0.5
-            });
+        // Extract U matrix (left singular vectors)
+        if let Some(u_matrix) = svd.u {
+            // Select top k components from U matrix
+            // These represent the most important latent semantic dimensions
+            let mut components = DMatrix::zeros(target_dim, nrows);
             
-            // Orthogonalize against previous components
-            for prev_v in &used_vectors {
-                let dot_product: f32 = v.dot(prev_v);
-                let norm_squared: f32 = prev_v.norm_squared();
-                if norm_squared > 1e-6 {
-                    let proj = dot_product / norm_squared;
-                    v = &v - proj * prev_v;
+            // Copy the first target_dim columns of U^T
+            // We transpose because we want each row to be a component
+            for i in 0..target_dim {
+                for j in 0..nrows {
+                    components[(i, j)] = u_matrix[(j, i)];
                 }
             }
             
-            // Power iteration to find eigenvector
-            for _ in 0..10 {
-                v = &covariance * &v;
-                
-                // Orthogonalize against previous components
-                for prev_v in &used_vectors {
-                    let dot_product: f32 = v.dot(prev_v);
-                    let norm_squared: f32 = prev_v.norm_squared();
-                    if norm_squared > 1e-6 {
-                        let proj = dot_product / norm_squared;
-                        v = &v - proj * prev_v;
-                    }
-                }
-                
-                // Normalize
-                let norm = v.norm();
-                if norm > 1e-6 {
-                    v /= norm;
+            // Optional: Weight components by singular values for better representation
+            // This gives more importance to stronger latent dimensions
+            let singular_values = svd.singular_values;
+            for i in 0..target_dim.min(singular_values.len()) {
+                let weight = singular_values[i].sqrt();
+                for j in 0..nrows {
+                    components[(i, j)] *= weight;
                 }
             }
             
-            // Store component
-            for j in 0..nrows {
-                components[(i, j)] = v[j];
+            self.lsa_components = Some(components);
+        } else {
+            // Fallback to identity-like transformation if SVD fails
+            let mut components = DMatrix::zeros(target_dim, nrows);
+            for i in 0..target_dim.min(nrows) {
+                components[(i, i)] = 1.0;
             }
-            used_vectors.push(v);
+            self.lsa_components = Some(components);
         }
-        
-        self.lsa_components = Some(components);
     }
     
     // Transform a document to embedding vector

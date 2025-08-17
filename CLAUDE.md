@@ -50,10 +50,11 @@ src/
 
 | Metric | Achievement |
 |--------|------------|
-| WASM Size | **152KB** |
+| WASM Size | **182KB** (with high-accuracy SVD) |
 | Vectorization Speed | ~5ms/document |
 | Embedding Dimensions | 64-128 (configurable) |
 | Memory Usage | Minimal (using wee_alloc) |
+| SVD Implementation | Full nalgebra SVD for high accuracy |
 
 ## 🎨 Demo Pages
 
@@ -174,6 +175,10 @@ if (!embedder.contains_document(text)) {
 - **TF-IDF**: Captures term importance across document collection
 - **LSA**: Reduces dimensionality while preserving semantic relationships
 - **Combination**: Balances computational efficiency with semantic accuracy
+- **High-Accuracy SVD**: Using nalgebra's full SVD implementation for precise latent semantic analysis
+  - Singular value weighting for better representation
+  - Preserves important latent dimensions
+  - Improved similarity calculations
 
 ### Incremental Learning Strategy
 
