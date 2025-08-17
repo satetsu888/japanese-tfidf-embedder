@@ -248,6 +248,13 @@ new StableHashEmbedder(dimension, char_ngram_size)
 
 ## 🎨 デモ
 
+### オンラインデモ
+
+GitHub Pagesで公開されているデモページ：
+https://satetsu888.github.io/japanese-tfidf-embedder/
+
+### ローカルでの実行
+
 `examples/` ディレクトリにデモページが含まれています：
 
 1. **index.html**: デモ一覧とプロジェクト概要
@@ -255,14 +262,17 @@ new StableHashEmbedder(dimension, char_ngram_size)
 3. **incremental_demo.html**: 300のサンプル文書を使った段階的学習の対話的デモ
 4. **dictionary_demo.html**: ユーザー辞書機能のデモ
 
-デモを実行するには：
+デモをローカルで実行するには：
 
 ```bash
+# WASMをビルド
+wasm-pack build --target web --out-dir pkg
+
 # HTTPサーバーを起動
 python3 -m http.server 8000
 
 # ブラウザでアクセス
-# http://localhost:8000/examples/basic_usage.html
+# http://localhost:8000/examples/
 ```
 
 ## 📊 パフォーマンス
@@ -303,6 +313,18 @@ python3 -m http.server 8000
   - 特異値による重み付け
   - 主成分の正確な抽出
 - **正規化**: L2正規化されたベクトル出力
+
+## 🚀 GitHub Pages設定
+
+このプロジェクトは、GitHub Actionsを使用して自動的にGitHub Pagesにデプロイされます。
+
+### セットアップ手順
+
+1. GitHubリポジトリの Settings → Pages へアクセス
+2. Source を「GitHub Actions」に設定
+3. mainブランチにpushすると自動的にデプロイされます
+
+デプロイされたページ: https://satetsu888.github.io/japanese-tfidf-embedder/
 
 ## ライセンス
 
