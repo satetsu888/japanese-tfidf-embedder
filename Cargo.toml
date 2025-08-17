@@ -1,6 +1,6 @@
 [package]
 name = "japanese-tfidf-embedder"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["satetsu888"]
 description = "Japanese text vectorization using TF-IDF + LSA with n-gram tokenization and custom dictionary support"
