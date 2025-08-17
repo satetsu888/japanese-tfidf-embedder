@@ -1,6 +1,5 @@
 {
   "name": "japanese-text-vector-dev",
-  "version": "0.1.0",
   "private": true,
   "description": "Development environment for japanese-text-vector",
   "scripts": {
