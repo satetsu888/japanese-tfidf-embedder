@@ -1,10 +1,3 @@
-use wasm_bindgen::prelude::*;
-
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 // Set panic hook for better error messages in browser
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -12,18 +5,6 @@ pub fn set_panic_hook() {
     // we will get better error messages if our code ever panics.
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
-}
-
-// Console log macro for debugging
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    pub fn log(s: &str);
-}
-
-#[macro_export]
-macro_rules! console_log {
-    ($($t:tt)*) => (crate::utils::log(&format_args!($($t)*).to_string()))
 }
 
 // Cosine similarity calculation

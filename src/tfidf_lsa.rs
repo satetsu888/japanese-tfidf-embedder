@@ -94,7 +94,8 @@ impl TfIdfLsa {
         let covariance = (&tfidf_matrix * tfidf_matrix.transpose()) / ncols as f32;
         
         // Use power iteration to find principal components
-        // This is a simplified approach suitable for WASM
+        // This is a simplified approach optimized for WASM size constraints
+        // A full SVD implementation would be more accurate but significantly larger
         let mut components = DMatrix::zeros(target_dim, nrows);
         let mut used_vectors: Vec<DVector<f32>> = Vec::new();
         

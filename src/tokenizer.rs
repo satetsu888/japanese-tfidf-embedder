@@ -493,7 +493,7 @@ mod tests {
         // Test disabling stop words
         tokenizer.set_stop_words_enabled(false);
         let text = "今日は天気です";
-        let tokens = tokenizer.tokenize(text);
+        let _tokens = tokenizer.tokenize(text);
         
         // With stop words disabled, particles might appear in tokens
         // (depending on n-gram generation)

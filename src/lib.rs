@@ -2,7 +2,7 @@
 use wasm_bindgen::prelude::*;
 
 // Use wee_alloc as the global allocator for smaller WASM size
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "wee_alloc"))]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 

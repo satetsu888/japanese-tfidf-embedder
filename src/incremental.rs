@@ -10,6 +10,17 @@ use wasm_bindgen::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 type JsValue = String;
 
+// Helper function to create errors for both WASM and non-WASM targets
+#[cfg(target_arch = "wasm32")]
+fn create_error(msg: &str) -> JsValue {
+    JsValue::from_str(msg)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn create_error(msg: &str) -> JsValue {
+    msg.to_string()
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct IncrementalEmbedder {
@@ -109,10 +120,7 @@ impl IncrementalEmbedder {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn start_background_retrain(&mut self, embedding_dim: usize) -> Result<(), JsValue> {
         if self.is_retraining {
-            #[cfg(target_arch = "wasm32")]
-            return Err(JsValue::from_str("Retraining already in progress"));
-            #[cfg(not(target_arch = "wasm32"))]
-            return Err("Retraining already in progress".to_string());
+            return Err(create_error("Retraining already in progress"));
         }
         
         self.is_retraining = true;
@@ -197,23 +205,13 @@ impl IncrementalEmbedder {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn export_model(&self) -> Result<String, JsValue> {
         serde_json::to_string(self)
-            .map_err(|e| {
-                #[cfg(target_arch = "wasm32")]
-                return JsValue::from_str(&format!("Failed to export model: {}", e));
-                #[cfg(not(target_arch = "wasm32"))]
-                return format!("Failed to export model: {}", e);
-            })
+            .map_err(|e| create_error(&format!("Failed to export model: {}", e)))
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn import_model(json_data: &str) -> Result<IncrementalEmbedder, JsValue> {
         serde_json::from_str(json_data)
-            .map_err(|e| {
-                #[cfg(target_arch = "wasm32")]
-                return JsValue::from_str(&format!("Failed to import model: {}", e));
-                #[cfg(not(target_arch = "wasm32"))]
-                return format!("Failed to import model: {}", e);
-            })
+            .map_err(|e| create_error(&format!("Failed to import model: {}", e)))
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
