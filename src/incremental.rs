@@ -37,6 +37,11 @@ pub struct IncrementalEmbedder {
     // For background retraining
     pending_model: Option<TfIdfLsa>,
     retrain_step: RetrainStep,
+    
+    // For searchable documents
+    searchable_documents: Vec<String>,
+    searchable_vectors: Vec<Vec<f32>>,
+    searchable_set: HashSet<String>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -64,6 +69,9 @@ impl IncrementalEmbedder {
             retrain_progress: 0.0,
             pending_model: None,
             retrain_step: RetrainStep::Idle,
+            searchable_documents: Vec::new(),
+            searchable_vectors: Vec::new(),
+            searchable_set: HashSet::new(),
         }
     }
 
@@ -81,18 +89,21 @@ impl IncrementalEmbedder {
             retrain_progress: 0.0,
             pending_model: None,
             retrain_step: RetrainStep::Idle,
+            searchable_documents: Vec::new(),
+            searchable_vectors: Vec::new(),
+            searchable_set: HashSet::new(),
         }
     }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-    pub fn add_document(&mut self, text: String, embedding_dim: usize) -> Result<(), JsValue> {
+    pub fn add_document_for_training(&mut self, text: String, embedding_dim: usize) -> Result<(), JsValue> {
         // Check if document already exists
         if self.document_set.contains(&text) {
             // Document already exists, skip adding
             return Ok(());
         }
         
-        // Add document to collection
+        // Add document to collection (training only)
         self.document_set.insert(text.clone());
         self.documents.push(text.clone());
         let tokens = self.tokenizer.tokenize(&text);
@@ -104,6 +115,24 @@ impl IncrementalEmbedder {
         let change_ratio = self.changes_since_update as f32 / self.documents.len().max(1) as f32;
         if change_ratio >= self.update_threshold && !self.is_retraining {
             self.start_background_retrain(embedding_dim)?;
+        }
+        
+        Ok(())
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn add_document(&mut self, text: String, embedding_dim: usize) -> Result<(), JsValue> {
+        // First add as training document
+        self.add_document_for_training(text.clone(), embedding_dim)?;
+        
+        // Then add as searchable if not already present
+        if !self.searchable_set.contains(&text) {
+            self.searchable_set.insert(text.clone());
+            self.searchable_documents.push(text.clone());
+            
+            // Pre-compute and store the vector
+            let vector = self.transform(&text)?;
+            self.searchable_vectors.push(vector);
         }
         
         Ok(())
@@ -172,6 +201,14 @@ impl IncrementalEmbedder {
                 // Swap models
                 if let Some(new_model) = self.pending_model.take() {
                     self.model = new_model;
+                    
+                    // Update searchable vectors with new model
+                    self.searchable_vectors.clear();
+                    for doc in &self.searchable_documents {
+                        if let Ok(vector) = self.transform(doc) {
+                            self.searchable_vectors.push(vector);
+                        }
+                    }
                 }
                 
                 self.is_retraining = false;
@@ -249,6 +286,81 @@ impl IncrementalEmbedder {
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn contains_document(&self, text: &str) -> bool {
         self.document_set.contains(text)
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn find_similar(&self, query: &str, top_k: usize) -> Result<Vec<String>, JsValue> {
+        if self.searchable_documents.is_empty() {
+            return Ok(Vec::new());
+        }
+        
+        // Transform query to vector
+        let query_vec = self.transform(query)?;
+        
+        // Calculate similarities with all searchable documents
+        let mut similarities: Vec<(usize, f32)> = self.searchable_vectors
+            .iter()
+            .enumerate()
+            .map(|(idx, doc_vec)| {
+                let similarity = cosine_similarity(&query_vec, doc_vec);
+                (idx, similarity)
+            })
+            .collect();
+        
+        // Sort by similarity (descending)
+        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        // Return top-k documents
+        let results = similarities
+            .iter()
+            .take(top_k)
+            .map(|(idx, _)| self.searchable_documents[*idx].clone())
+            .collect();
+        
+        Ok(results)
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn find_similar_with_scores(&self, query: &str, top_k: usize) -> Result<String, JsValue> {
+        if self.searchable_documents.is_empty() {
+            return Ok("[]".to_string());
+        }
+        
+        // Transform query to vector
+        let query_vec = self.transform(query)?;
+        
+        // Calculate similarities with all searchable documents
+        let mut similarities: Vec<(usize, f32)> = self.searchable_vectors
+            .iter()
+            .enumerate()
+            .map(|(idx, doc_vec)| {
+                let similarity = cosine_similarity(&query_vec, doc_vec);
+                (idx, similarity)
+            })
+            .collect();
+        
+        // Sort by similarity (descending)
+        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        // Return top-k documents with scores as JSON
+        let results: Vec<serde_json::Value> = similarities
+            .iter()
+            .take(top_k)
+            .map(|(idx, score)| {
+                serde_json::json!({
+                    "document": self.searchable_documents[*idx],
+                    "score": score
+                })
+            })
+            .collect();
+        
+        serde_json::to_string(&results)
+            .map_err(|e| create_error(&format!("Failed to serialize results: {}", e)))
+    }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn get_searchable_count(&self) -> usize {
+        self.searchable_documents.len()
     }
     
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -367,5 +479,55 @@ mod tests {
         // Add the first document again
         embedder.add_document("同じ文書です".to_string(), 64).unwrap();
         assert_eq!(embedder.get_document_count(), 2); // Should still be 2
+    }
+    
+    #[test]
+    fn test_training_vs_searchable_documents() {
+        let mut embedder = IncrementalEmbedder::new(0.5);
+        
+        // Add training-only documents
+        embedder.add_document_for_training("学習用データ1".to_string(), 64).unwrap();
+        embedder.add_document_for_training("学習用データ2".to_string(), 64).unwrap();
+        embedder.add_document_for_training("学習用データ3".to_string(), 64).unwrap();
+        
+        // Add searchable documents
+        embedder.add_document("検索対象1".to_string(), 64).unwrap();
+        embedder.add_document("検索対象2".to_string(), 64).unwrap();
+        
+        // Check counts
+        assert_eq!(embedder.get_document_count(), 5); // Total documents
+        assert_eq!(embedder.get_searchable_count(), 2); // Only searchable
+        
+        // Test find_similar
+        let results = embedder.find_similar("検索", 10).unwrap();
+        assert_eq!(results.len(), 2); // Should only return searchable documents
+        
+        // Verify results contain searchable documents
+        assert!(results.contains(&"検索対象1".to_string()) || results.contains(&"検索対象2".to_string()));
+    }
+    
+    #[test]
+    fn test_find_similar_with_scores() {
+        let mut embedder = IncrementalEmbedder::new(0.5);
+        
+        // Add training data for better model
+        for i in 0..10 {
+            embedder.add_document_for_training(format!("背景知識{}", i), 64).unwrap();
+        }
+        
+        // Add searchable documents
+        embedder.add_document("今日は天気がいいですね".to_string(), 64).unwrap();
+        embedder.add_document("明日は雨が降りそうです".to_string(), 64).unwrap();
+        embedder.add_document("今日は映画を見ました".to_string(), 64).unwrap();
+        
+        // Search similar documents
+        let results_json = embedder.find_similar_with_scores("天気", 2).unwrap();
+        let results: Vec<serde_json::Value> = serde_json::from_str(&results_json).unwrap();
+        
+        assert_eq!(results.len(), 2);
+        
+        // Check structure
+        assert!(results[0].get("document").is_some());
+        assert!(results[0].get("score").is_some());
     }
 }

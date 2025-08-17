@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Training vs Searchable Documents Demo - Japanese Text Vector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 40px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        h3 {
+            color: #555;
+            margin-top: 20px;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .demo-section {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .result-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .result-score {
+            float: right;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .code-block {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre;
+            margin: 0;
+        }
+        
+        .code-block code {
+            font-family: inherit;
+            font-size: inherit;
+            background: none;
+            padding: 0;
+            color: #333;
+        }
+        
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Training vs Searchable Documents</h1>
+        <p class="subtitle">学習専用データと検索対象データの分離デモ</p>
+
+        <div class="panel">
+            <h2>📊 統計情報</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-docs">0</div>
+                    <div class="stat-label">全ドキュメント数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="training-docs">0</div>
+                    <div class="stat-label">学習専用</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="searchable-docs">0</div>
+                    <div class="stat-label">検索対象</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="vocab-size">0</div>
+                    <div class="stat-label">語彙サイズ</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🔄 モデル再学習</h2>
+            <div style="display: flex; align-items: center; gap: 20px; margin: 20px 0;">
+                <button onclick="forceRetrain()" id="retrain-btn">強制再学習を実行</button>
+                <div style="flex: 1;">
+                    <div id="retrain-status" style="color: #666;">待機中</div>
+                    <progress id="retrain-progress" value="0" max="100" style="width: 100%; display: none;"></progress>
+                </div>
+            </div>
+            <div class="info-box">
+                <strong>自動再学習:</strong> ドキュメント数の10%以上が変更されると自動的に再学習が開始されます。
+                強制再学習ボタンで手動実行も可能です。
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>➕ ドキュメント追加</h2>
+            
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="switchTab('training')">学習専用データ</button>
+                <button class="tab-button" onclick="switchTab('searchable')">検索対象データ</button>
+                <button class="tab-button" onclick="switchTab('batch')">バッチ追加</button>
+            </div>
+            
+            <div id="training-tab" class="tab-content active">
+                <div class="info-box">
+                    <strong>学習専用データ:</strong> モデルの学習には使用されますが、検索結果には現れません。
+                    背景知識や文脈情報として活用されます。
+                </div>
+                <textarea id="training-input" rows="3" placeholder="学習専用テキストを入力...">機械学習は人工知能の一分野です。</textarea>
+                <button onclick="addTrainingDoc()">学習データとして追加</button>
+            </div>
+            
+            <div id="searchable-tab" class="tab-content">
+                <div class="info-box">
+                    <strong>検索対象データ:</strong> 学習にも使用され、検索結果として返されます。
+                    実際に検索したいコンテンツを追加します。
+                </div>
+                <textarea id="searchable-input" rows="3" placeholder="検索対象テキストを入力...">深層学習について詳しく解説します。</textarea>
+                <button onclick="addSearchableDoc()">検索対象として追加</button>
+            </div>
+            
+            <div id="batch-tab" class="tab-content">
+                <div class="info-box">
+                    <strong>バッチ追加:</strong> サンプルデータを一括で追加できます。
+                </div>
+                <button onclick="addSampleTrainingData()">学習用サンプル追加（100件）</button>
+                <button onclick="addSampleSearchableData()">検索対象サンプル追加（20件）</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>🔍 類似検索</h2>
+            
+            <textarea id="query-input" rows="2" placeholder="検索クエリを入力...">人工知能の応用</textarea>
+            <button onclick="searchSimilar()">検索実行</button>
+            <button onclick="searchWithScores()">スコア付き検索</button>
+            
+            <div id="search-results" style="margin-top: 20px;">
+                <!-- 検索結果がここに表示されます -->
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>💡 使用例</h2>
+            <pre class="code-block"><code>// 大量の背景知識を学習データとして追加
+for (let doc of wikipediaArticles) {
+    embedder.add_document_for_training(doc, 64);
+}
+
+// 実際に検索したいドキュメントを追加
+for (let doc of productDescriptions) {
+    embedder.add_document(doc, 64);
+}
+
+// 高速検索（検索対象のみから結果が返る）
+const results = embedder.find_similar("ユーザーのクエリ", 10);</code></pre>
+        </div>
+    </div>
+
+    <script type="module">
+        import init, { IncrementalEmbedder } from '../pkg/japanese_tfidf_embedder.js';
+        
+        let embedder;
+        let totalDocCount = 0;
+        let trainingOnlyCount = 0;
+        
+        // サンプルデータ
+        const trainingData = [
+            "自然言語処理は人工知能の重要な分野です。",
+            "機械学習アルゴリズムには様々な種類があります。",
+            "ニューラルネットワークは脳の仕組みを模倣しています。",
+            "深層学習は多層のニューラルネットワークを使用します。",
+            "強化学習はエージェントが環境から学習する手法です。",
+            "教師あり学習にはラベル付きデータが必要です。",
+            "教師なし学習はパターンを自動的に発見します。",
+            "転移学習により少ないデータで学習が可能です。",
+            "自然言語処理は文章の意味を理解する技術です。",
+            "コンピュータビジョンは画像認識に使われます。"
+        ];
+        
+        const searchableData = [
+            "Pythonで機械学習を始める方法",
+            "TensorFlowの基本的な使い方",
+            "PyTorchによるディープラーニング入門",
+            "scikit-learnで分類問題を解く",
+            "Kerasを使った画像認識の実装",
+            "自然言語処理ライブラリspaCyの活用",
+            "BERTモデルの日本語での使用方法",
+            "GPTモデルの仕組みと応用",
+            "機械学習モデルの評価指標について",
+            "過学習を防ぐ正則化手法",
+            "データの前処理とクレンジング手法",
+            "特徴量エンジニアリングの実践",
+            "ハイパーパラメータチューニングの自動化",
+            "アンサンブル学習による精度向上",
+            "時系列データの予測モデル構築",
+            "異常検知アルゴリズムの実装",
+            "推薦システムの設計と開発",
+            "画像セグメンテーションの手法",
+            "音声認識システムの構築方法",
+            "強化学習を使ったゲームAI開発"
+        ];
+        
+        async function initializeApp() {
+            await init();
+            embedder = new IncrementalEmbedder(0.1); // 閾値を下げて再学習しやすく
+            updateStats();
+            console.log('Embedder initialized');
+        }
+        
+        function updateStats() {
+            const searchableCount = embedder.get_searchable_count();
+            document.getElementById('total-docs').textContent = totalDocCount;
+            document.getElementById('training-docs').textContent = trainingOnlyCount;
+            document.getElementById('searchable-docs').textContent = searchableCount;
+            document.getElementById('vocab-size').textContent = embedder.get_vocabulary_size();
+        }
+        
+        window.switchTab = function(tabName) {
+            // タブボタンの状態を更新
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // タブコンテンツの表示を切り替え
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+        
+        window.addTrainingDoc = function() {
+            const text = document.getElementById('training-input').value.trim();
+            if (!text) return;
+            
+            try {
+                embedder.add_document_for_training(text, 64);
+                totalDocCount++;
+                trainingOnlyCount++;
+                updateStats();
+                document.getElementById('training-input').value = '';
+                console.log('Added training document:', text);
+                checkRetraining();
+            } catch (e) {
+                console.error('Error adding training document:', e);
+            }
+        }
+        
+        window.addSearchableDoc = function() {
+            const text = document.getElementById('searchable-input').value.trim();
+            if (!text) return;
+            
+            try {
+                embedder.add_document(text, 64);
+                totalDocCount++;
+                updateStats();
+                document.getElementById('searchable-input').value = '';
+                console.log('Added searchable document:', text);
+                checkRetraining();
+            } catch (e) {
+                console.error('Error adding searchable document:', e);
+            }
+        }
+        
+        window.addSampleTrainingData = function() {
+            const startTime = performance.now();
+            
+            // 100件の学習データを生成
+            for (let i = 0; i < 100; i++) {
+                const doc = trainingData[i % trainingData.length] + ` (バリエーション${i})`;
+                embedder.add_document_for_training(doc, 64);
+                totalDocCount++;
+                trainingOnlyCount++;
+            }
+            
+            const elapsed = performance.now() - startTime;
+            updateStats();
+            console.log(`Added 100 training documents in ${elapsed.toFixed(2)}ms`);
+            checkRetraining();
+        }
+        
+        window.addSampleSearchableData = function() {
+            const startTime = performance.now();
+            
+            // 20件の検索対象データを追加（すべて異なる文章）
+            for (let i = 0; i < searchableData.length && i < 20; i++) {
+                embedder.add_document(searchableData[i], 64);
+                totalDocCount++;
+            }
+            
+            const elapsed = performance.now() - startTime;
+            updateStats();
+            console.log(`Added 20 searchable documents in ${elapsed.toFixed(2)}ms`);
+            checkRetraining();
+        }
+        
+        function checkRetraining() {
+            if (embedder.is_retraining()) {
+                document.getElementById('retrain-status').textContent = '再学習中...';
+                document.getElementById('retrain-progress').style.display = 'block';
+                document.getElementById('retrain-btn').disabled = true;
+                
+                // 再学習の進行を監視
+                const interval = setInterval(() => {
+                    if (embedder.step_retrain()) {
+                        // 再学習完了
+                        clearInterval(interval);
+                        document.getElementById('retrain-status').textContent = '再学習完了';
+                        document.getElementById('retrain-progress').style.display = 'none';
+                        document.getElementById('retrain-btn').disabled = false;
+                        updateStats();
+                        
+                        setTimeout(() => {
+                            document.getElementById('retrain-status').textContent = '待機中';
+                        }, 2000);
+                    } else {
+                        // 進行状況を更新
+                        const progress = embedder.get_retrain_progress() * 100;
+                        document.getElementById('retrain-progress').value = progress;
+                    }
+                }, 50);
+            }
+        }
+        
+        window.forceRetrain = function() {
+            if (totalDocCount === 0) {
+                alert('ドキュメントを追加してから再学習を実行してください。');
+                return;
+            }
+            
+            try {
+                embedder.start_background_retrain(64);
+                checkRetraining();
+                console.log('Force retrain started');
+            } catch (e) {
+                console.error('Error starting retrain:', e);
+            }
+        }
+        
+        window.searchSimilar = function() {
+            const query = document.getElementById('query-input').value.trim();
+            if (!query) return;
+            
+            const startTime = performance.now();
+            const results = embedder.find_similar(query, 10);
+            const elapsed = performance.now() - startTime;
+            
+            let html = `<h3>検索結果 (${elapsed.toFixed(2)}ms)</h3>`;
+            
+            if (results.length === 0) {
+                html += '<p>検索対象ドキュメントがありません。</p>';
+            } else {
+                results.forEach((doc, idx) => {
+                    html += `<div class="result-item">
+                        <strong>#${idx + 1}</strong> ${doc}
+                    </div>`;
+                });
+            }
+            
+            document.getElementById('search-results').innerHTML = html;
+        }
+        
+        window.searchWithScores = function() {
+            const query = document.getElementById('query-input').value.trim();
+            if (!query) return;
+            
+            const startTime = performance.now();
+            const resultsJson = embedder.find_similar_with_scores(query, 10);
+            const elapsed = performance.now() - startTime;
+            
+            const results = JSON.parse(resultsJson);
+            
+            let html = `<h3>スコア付き検索結果 (${elapsed.toFixed(2)}ms)</h3>`;
+            
+            if (results.length === 0) {
+                html += '<p>検索対象ドキュメントがありません。</p>';
+            } else {
+                results.forEach((item, idx) => {
+                    html += `<div class="result-item">
+                        <span class="result-score">${item.score.toFixed(4)}</span>
+                        <strong>#${idx + 1}</strong> ${item.document}
+                    </div>`;
+                });
+            }
+            
+            document.getElementById('search-results').innerHTML = html;
+        }
+        
+        // 初期化
+        initializeApp();
+    </script>
+</body>
+</html>
