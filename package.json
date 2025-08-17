@@ -1,41 +1,8 @@
 {
-  "name": "japanese-tfidf-embedder",
+  "name": "japanese-text-vector-dev",
   "version": "0.1.0",
-  "description": "Japanese text vectorization using TF-IDF + LSA with n-gram tokenization and custom dictionary support, powered by Rust WebAssembly",
-  "keywords": [
-    "japanese",
-    "tfidf",
-    "lsa",
-    "text-vectorization",
-    "text-embedding",
-    "nlp",
-    "natural-language-processing",
-    "ngram",
-    "wasm",
-    "webassembly",
-    "rust",
-    "similarity-search",
-    "semantic-similarity",
-    "incremental-learning",
-    "chat-analysis",
-    "document-similarity",
-    "text-mining",
-    "japanese-nlp",
-    "user-dictionary",
-    "custom-dictionary",
-    "tf-idf",
-    "latent-semantic-analysis",
-    "vector-search",
-    "text-analysis"
-  ],
-  "main": "pkg/japanese_text_vector.js",
-  "module": "pkg/japanese_text_vector.js",
-  "types": "pkg/japanese_text_vector.d.ts",
-  "files": [
-    "pkg/",
-    "README.md",
-    "LICENSE"
-  ],
+  "private": true,
+  "description": "Development environment for japanese-text-vector",
   "scripts": {
     "build": "wasm-pack build --target web --out-dir pkg",
     "build:node": "wasm-pack build --target nodejs --out-dir pkg-node",
@@ -43,27 +10,8 @@
     "test": "cargo test",
     "test:wasm": "wasm-pack test --chrome --headless",
     "clean": "rm -rf pkg pkg-node pkg-bundler target",
-    "prepublishOnly": "npm run build",
-    "serve": "python3 -m http.server 8000"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/satetsu888/japanese-tfidf-embedder"
-  },
-  "homepage": "https://github.com/satetsu888/japanese-tfidf-embedder#readme",
-  "bugs": {
-    "url": "https://github.com/satetsu888/japanese-tfidf-embedder/issues"
-  },
-  "license": "MIT",
-  "author": {
-    "name": "satetsu888",
-    "url": "https://github.com/satetsu888"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
+    "serve": "python3 -m http.server 8000",
+    "publish": "npm run build && cd pkg && npm publish"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

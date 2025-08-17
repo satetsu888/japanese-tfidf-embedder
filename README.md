@@ -2,6 +2,10 @@
 
 高精度SVD実装を搭載した、WASM対応の軽量な日本語テキストベクトル化ライブラリです。TF-IDF + LSA（潜在意味解析）を使用し、ブラウザ上でリアルタイムに日本語文書の意味的類似度を計算します。
 
+### オンラインデモ
+
+https://satetsu888.github.io/japanese-tfidf-embedder/
+
 ## 🎯 特徴
 
 - 🚀 **高速・軽量**: WASM対応でブラウザ上で動作（184KB）
@@ -246,35 +250,6 @@ new StableHashEmbedder(dimension, char_ngram_size)
 | `set_dictionary(json)` | ユーザー辞書を設定 |
 | `clear_dictionary()` | ユーザー辞書をクリア |
 
-## 🎨 デモ
-
-### オンラインデモ
-
-GitHub Pagesで公開されているデモページ：
-https://satetsu888.github.io/japanese-tfidf-embedder/
-
-### ローカルでの実行
-
-`examples/` ディレクトリにデモページが含まれています：
-
-1. **index.html**: デモ一覧とプロジェクト概要
-2. **basic_usage.html**: 基本的な使用例
-3. **incremental_demo.html**: 300のサンプル文書を使った段階的学習の対話的デモ
-4. **dictionary_demo.html**: ユーザー辞書機能のデモ
-
-デモをローカルで実行するには：
-
-```bash
-# WASMをビルド
-wasm-pack build --target web --out-dir pkg
-
-# HTTPサーバーを起動
-python3 -m http.server 8000
-
-# ブラウザでアクセス
-# http://localhost:8000/examples/
-```
-
 ## 📊 パフォーマンス
 
 | 指標 | 実測値 |
@@ -313,6 +288,30 @@ python3 -m http.server 8000
   - 特異値による重み付け
   - 主成分の正確な抽出
 - **正規化**: L2正規化されたベクトル出力
+
+## 📦 NPMパッケージの公開
+
+### 公開手順
+
+```bash
+# 1. WASMビルド
+npm run build
+
+# 2. パッケージ公開（pkg内のpackage.jsonを使用）
+cd pkg
+npm publish
+
+# または、ルートから直接実行
+npm run publish  # build + publishを自動実行
+```
+
+### パッケージ構成
+
+公開されるパッケージには以下のファイルが含まれます：
+- `japanese_text_vector.js` - メインのJavaScriptラッパー
+- `japanese_text_vector.d.ts` - TypeScript型定義
+- `japanese_text_vector_bg.wasm` - WebAssemblyバイナリ
+- `japanese_text_vector_bg.wasm.d.ts` - WASM型定義
 
 ## 🚀 GitHub Pages設定
 
