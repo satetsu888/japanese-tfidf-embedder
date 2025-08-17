@@ -1,4 +1,4 @@
-# Japanese Text Vector
+# japanese-tfidf-embedder
 
 高精度SVD実装を搭載した、WASM対応の軽量な日本語テキストベクトル化ライブラリです。TF-IDF + LSA（潜在意味解析）を使用し、ブラウザ上でリアルタイムに日本語文書の意味的類似度を計算します。
 
@@ -17,22 +17,31 @@
 - 🔧 **2つの実装**:
   - `IncrementalEmbedder`: 段階的学習対応の動的ベクトル化（重複検出機能付き）
   - `StableHashEmbedder`: 文書追加に影響されない安定ベクトル化
+- 📚 **ユーザー辞書**: カスタム辞書による同義語・異表記の正規化
 
 ## インストール
 
-### 必要な環境
+### NPMパッケージとして使用（推奨）
+
+```bash
+npm install japanese-tfidf-embedder
+```
+
+### ソースからビルド
+
+#### 必要な環境
 
 - Rust 1.70+
 - wasm-pack
 - Node.js 14+ (オプション)
 - Python 3 (デモサーバー用、オプション)
 
-### ビルド方法
+#### ビルド方法
 
 ```bash
 # リポジトリのクローン
-git clone https://github.com/yourusername/japanese-text-vector.git
-cd japanese-text-vector
+git clone https://github.com/satetsu888/japanese-tfidf-embedder.git
+cd japanese-tfidf-embedder
 
 # 依存関係のインストール
 cargo build
@@ -49,58 +58,138 @@ cargo test
 
 ## 使用方法
 
-### ブラウザでの使用
+### NPMパッケージの使用（ブラウザ/ESモジュール）
+
+```javascript
+import init, { IncrementalEmbedder, StableHashEmbedder } from 'japanese-tfidf-embedder';
+
+async function initializeEmbedder() {
+    // WASMモジュールの初期化（初回のみ必要）
+    await init();
+    
+    // IncrementalEmbedderの作成
+    const embedder = new IncrementalEmbedder(2.0);  // update_threshold=2.0（自動再学習を抑制）
+    
+    // 初期文書の追加
+    const documents = [
+        "機械学習は人工知能の一分野です",
+        "深層学習はニューラルネットワークを使います",
+        "自然言語処理で文書を解析します"
+    ];
+    
+    for (const doc of documents) {
+        embedder.add_document(doc, 64);  // embedding_dim=64
+    }
+    
+    // モデルの訓練（重要：これをしないとベクトルが全て0になります）
+    embedder.start_background_retrain(64);
+    while (!embedder.step_retrain()) {
+        // 訓練が完了するまで繰り返す
+    }
+    
+    // 文書のベクトル化
+    const vector = embedder.transform("AIの技術について");
+    console.log("Vector dimensions:", vector.length);
+    
+    // 類似度計算
+    const similarity = embedder.get_similarity(
+        "機械学習とAI",
+        "人工知能と深層学習"
+    );
+    console.log("Similarity:", similarity);
+    
+    return embedder;
+}
+
+// 使用例
+initializeEmbedder().then(embedder => {
+    // embedderを使った処理
+    console.log("Documents:", embedder.get_unique_document_count());
+});
+```
+
+### ユーザー辞書の使用
+
+```javascript
+import init, { IncrementalEmbedder } from 'japanese-tfidf-embedder';
+
+async function setupWithDictionary() {
+    await init();
+    
+    const embedder = new IncrementalEmbedder(2.0);
+    
+    // ユーザー辞書の定義
+    const dictionary = [
+        {
+            surface: "人工知能",
+            variants: ["AI", "エーアイ", "Artificial Intelligence"]
+        },
+        {
+            surface: "機械学習",
+            variants: ["ML", "マシンラーニング", "Machine Learning"]
+        }
+    ];
+    
+    // 辞書を適用
+    embedder.set_dictionary(JSON.stringify(dictionary));
+    
+    // 文書を追加（異表記は自動的に正規化される）
+    embedder.add_document("AIとMLの研究", 64);
+    embedder.add_document("人工知能と機械学習の研究", 64);
+    
+    // モデルを訓練
+    embedder.start_background_retrain(64);
+    while (!embedder.step_retrain()) {}
+    
+    // "AI" と "人工知能" が同じトークンとして扱われるため、高い類似度になる
+    const similarity = embedder.get_similarity(
+        "AIの応用",
+        "人工知能の応用"
+    );
+    console.log("Similarity with dictionary:", similarity);  // 高い値
+    
+    return embedder;
+}
+```
+
+### Node.js環境での使用
+
+```javascript
+// CommonJSの場合
+const init = require('japanese-tfidf-embedder');
+
+(async () => {
+    // 初期化
+    const wasm = await init();
+    const { IncrementalEmbedder } = wasm;
+    
+    const embedder = new IncrementalEmbedder(2.0);
+    // 以下、ブラウザと同じように使用
+})();
+```
+
+### HTMLでの直接使用
 
 ```html
 <!DOCTYPE html>
 <html>
 <head>
     <script type="module">
-        import init, { IncrementalEmbedder, StableHashEmbedder } from './pkg/japanese_text_vector.js';
-
+        import init, { IncrementalEmbedder, StableHashEmbedder } from 'https://unpkg.com/japanese-tfidf-embedder/pkg/japanese_text_vector.js';
+        
         async function run() {
-            // WASMモジュールの初期化
             await init();
-
-            // IncrementalEmbedder の使用
-            const embedder = new IncrementalEmbedder(0.3);
             
-            // 文書の追加
-            embedder.add_document("今日は天気がいいですね", 64);
-            embedder.add_document("明日は雨が降りそうです", 64);
-            
-            // 重複文書は自動的に排除される
-            embedder.add_document("今日は天気がいいですね", 64);  // スキップされる
-            console.log("ユニーク文書数:", embedder.get_unique_document_count());  // 2
-            
-            // ベクトル化
-            const embedding = embedder.transform("今日は晴れです");
-            console.log("Embedding:", embedding);
-            
-            // 類似度計算
-            const similarity = embedder.get_similarity(
-                "今日は天気がいい",
-                "明日は天気がいい"
-            );
-            console.log("Similarity:", similarity);
+            // StableHashEmbedderの使用（文書追加に影響されない安定したベクトル）
+            const stableEmbedder = new StableHashEmbedder(64, 2);
+            const vector = stableEmbedder.transform("テキスト");
+            console.log("Stable vector:", vector);
         }
-
+        
         run();
     </script>
 </head>
 </html>
-```
-
-### Node.jsでの使用
-
-```javascript
-const { IncrementalEmbedder, StableHashEmbedder } = require('./pkg-node/japanese_text_vector.js');
-
-// StableHashEmbedder の使用（文書追加に影響されない）
-const stableEmbedder = new StableHashEmbedder(64, 2);
-
-const embedding = stableEmbedder.transform("日本語のテキスト");
-console.log("Stable embedding:", embedding);
 ```
 
 ## API リファレンス
@@ -132,6 +221,8 @@ new IncrementalEmbedder(update_threshold)
 | `import_model(json_data)` | JSONからモデルを復元 |
 | `get_unique_document_count()` | ユニークな文書数を取得 |
 | `contains_document(text)` | 文書が既に追加されているか確認 |
+| `set_dictionary(json)` | ユーザー辞書を設定 |
+| `clear_dictionary()` | ユーザー辞書をクリア |
 
 ### StableHashEmbedder
 
@@ -152,13 +243,17 @@ new StableHashEmbedder(dimension, char_ngram_size)
 |---------|------|
 | `transform(text)` | テキストをベクトル化 |
 | `get_similarity(text1, text2)` | 2つのテキストの類似度を計算 |
+| `set_dictionary(json)` | ユーザー辞書を設定 |
+| `clear_dictionary()` | ユーザー辞書をクリア |
 
 ## 🎨 デモ
 
 `examples/` ディレクトリにデモページが含まれています：
 
-1. **basic_usage.html**: 基本的な使用例
-2. **incremental_demo.html**: 300のサンプル文書を使った段階的学習の対話的デモ
+1. **index.html**: デモ一覧とプロジェクト概要
+2. **basic_usage.html**: 基本的な使用例
+3. **incremental_demo.html**: 300のサンプル文書を使った段階的学習の対話的デモ
+4. **dictionary_demo.html**: ユーザー辞書機能のデモ
 
 デモを実行するには：
 

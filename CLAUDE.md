@@ -1,4 +1,4 @@
-# Japanese Text Vector - Project Overview
+# japanese-tfidf-embedder - Project Overview
 
 ## 🎯 Project Purpose
 

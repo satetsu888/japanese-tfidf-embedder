@@ -2,10 +2,13 @@
 name = "japanese-text-vector"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name"]
-description = "Lightweight Japanese text vectorization library with TF-IDF + LSA"
+authors = ["satetsu888"]
+description = "Japanese text vectorization using TF-IDF + LSA with n-gram tokenization and custom dictionary support"
 license = "MIT"
-repository = "https://github.com/yourusername/japanese-text-vector"
+repository = "https://github.com/satetsu888/japanese-tfidf-embedder"
+homepage = "https://github.com/satetsu888/japanese-tfidf-embedder"
+keywords = ["japanese", "tfidf", "lsa", "nlp", "wasm"]
+categories = ["text-processing", "wasm", "algorithms"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

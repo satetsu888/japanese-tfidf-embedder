@@ -1,0 +1,44 @@
+# Source files
+src/
+target/
+Cargo.toml
+Cargo.lock
+.gitignore
+
+# Development files
+examples/
+tests/
+*.rs
+
+# Build artifacts (except pkg)
+pkg-node/
+pkg-bundler/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation source
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.travis.yml
+.gitlab-ci.yml
+
+# Temporary files
+*.log
+*.tmp
+tmp/
+temp/
+
+# Local environment
+.env
+.env.local
+node_modules/
