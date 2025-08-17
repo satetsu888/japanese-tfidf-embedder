@@ -42,9 +42,11 @@ src/
 ### 3. Japanese Tokenizer
 
 - **Character N-grams**: Combination of 2-grams and 3-grams
+- **Kanji Unigrams**: Single kanji extraction with reduced weights (0.6x) for contextual flexibility
 - **Character Type Detection**: Identification of hiragana, katakana, kanji, alphanumeric
 - **Word Boundary Estimation**: Simple word segmentation based on character type changes
 - **Vocabulary Limiting**: Document frequency filtering (max 50,000 words)
+- **Stop-word Filtering**: Japanese-specific stop words (particles, auxiliary verbs, formal nouns)
 
 ## 📊 Performance Metrics
 
@@ -190,6 +192,9 @@ if (!embedder.contains_document(text)) {
 
 - **No dictionary required**: Uses character patterns instead of morphological analysis
 - **Multi-granularity**: Combines different n-gram sizes for better coverage
+  - 2-3 grams for general context
+  - Kanji unigrams (1-gram) for capturing individual kanji meanings
+  - Weighted scoring: Single kanji receive 0.6x weight to account for contextual variations
 - **Character type awareness**: Leverages Japanese script transitions for word boundaries
 
 ## 🌟 Unique Aspects

@@ -126,6 +126,19 @@ impl JapaneseTokenizer {
         sequences
     }
 
+    // Extract single kanji characters (1-grams for kanji only)
+    pub fn kanji_unigrams(&self, text: &str) -> Vec<String> {
+        let mut unigrams = Vec::new();
+        
+        for ch in text.chars() {
+            if matches!(CharType::from_char(ch), CharType::Kanji) {
+                unigrams.push(ch.to_string());
+            }
+        }
+        
+        unigrams
+    }
+    
     // Simple word boundary estimation
     pub fn estimate_word_boundaries(&self, text: &str) -> Vec<String> {
         let mut words = Vec::new();
@@ -177,6 +190,14 @@ impl JapaneseTokenizer {
                 tokens.insert(token);
             }
         }
+        
+        // Add kanji unigrams (1-grams for kanji only)
+        // These are important for capturing individual kanji meanings
+        for token in self.kanji_unigrams(text) {
+            if !self.should_filter_token(&token) {
+                tokens.insert(token);
+            }
+        }
 
         // Add character type sequences
         for token in self.char_type_sequences(text) {
@@ -219,6 +240,13 @@ impl JapaneseTokenizer {
     pub fn calculate_token_score(&self, token: &str, doc_freq: usize, total_docs: usize) -> f32 {
         let mut score = 1.0;
         
+        // Check if token is a single kanji (1-gram)
+        let chars: Vec<char> = token.chars().collect();
+        if chars.len() == 1 && matches!(CharType::from_char(chars[0]), CharType::Kanji) {
+            // Single kanji: reduce weight since same kanji can have different meanings in different contexts
+            score *= 0.6;  // Lower weight for single kanji
+        }
+        
         // Reduce score for tokens starting/ending with particles
         let particles = ["は", "が", "を", "に", "で", "と", "の", "へ"];
         for particle in particles.iter() {
@@ -235,14 +263,15 @@ impl JapaneseTokenizer {
         let char_type_count = (has_kanji as u8) + (has_hiragana as u8) + (has_katakana as u8);
         
         // Boost score for tokens with single character type (more cohesive)
-        if char_type_count == 1 {
+        // But skip this boost for single kanji (already handled above)
+        if char_type_count == 1 && chars.len() > 1 {
             score *= 1.5;  // Single character type = likely a complete word
         } else if char_type_count >= 2 {
             score *= 0.7;  // Mixed character types = likely fragmented
         }
         
-        // Additional boost for pure kanji or katakana (often meaningful words)
-        if char_type_count == 1 && (has_kanji || has_katakana) {
+        // Additional boost for pure kanji or katakana compounds (multi-character, meaningful words)
+        if char_type_count == 1 && chars.len() > 1 && (has_kanji || has_katakana) {
             score *= 1.2;
         }
         
@@ -363,6 +392,24 @@ mod tests {
         assert!(ngrams.contains(&"日は".to_string()));
         assert!(ngrams.contains(&"今日は".to_string()));
     }
+    
+    #[test]
+    fn test_kanji_unigrams() {
+        let tokenizer = JapaneseTokenizer::new();
+        let text = "今日は映画を見ました";
+        let unigrams = tokenizer.kanji_unigrams(text);
+        
+        // Should contain individual kanji characters
+        assert!(unigrams.contains(&"今".to_string()));
+        assert!(unigrams.contains(&"日".to_string()));
+        assert!(unigrams.contains(&"映".to_string()));
+        assert!(unigrams.contains(&"画".to_string()));
+        assert!(unigrams.contains(&"見".to_string()));
+        
+        // Should not contain hiragana
+        assert!(!unigrams.contains(&"は".to_string()));
+        assert!(!unigrams.contains(&"を".to_string()));
+    }
 
     #[test]
     fn test_char_type_sequences() {
@@ -397,6 +444,13 @@ mod tests {
         // Should contain various n-grams
         assert!(tokens.contains(&"今日".to_string()));
         assert!(tokens.contains(&"映画".to_string()));
+        
+        // Should also contain kanji unigrams
+        assert!(tokens.contains(&"今".to_string()), "Should contain single kanji '今'");
+        assert!(tokens.contains(&"日".to_string()), "Should contain single kanji '日'");
+        assert!(tokens.contains(&"映".to_string()), "Should contain single kanji '映'");
+        assert!(tokens.contains(&"画".to_string()), "Should contain single kanji '画'");
+        assert!(tokens.contains(&"見".to_string()), "Should contain single kanji '見'");
     }
 
     #[test]
@@ -440,6 +494,12 @@ mod tests {
         let kanji_score = tokenizer.calculate_token_score("映画", 5, 10);
         let hiragana_score = tokenizer.calculate_token_score("えいが", 5, 10);
         assert!(kanji_score > hiragana_score);
+        
+        // Single kanji should have lower score than kanji compound
+        let single_kanji_score = tokenizer.calculate_token_score("映", 5, 10);
+        let compound_kanji_score = tokenizer.calculate_token_score("映画", 5, 10);
+        assert!(compound_kanji_score > single_kanji_score, 
+                "Compound kanji '映画' should have higher score than single kanji '映'");
     }
 
     #[test]
