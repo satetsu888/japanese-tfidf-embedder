@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Japanese Text Vector - User Dictionary Demo</title>
+    <title>Japanese Text Vector - ユーザー辞書デモ</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -196,16 +196,16 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎯 Japanese Text Vector - User Dictionary Demo</h1>
+        <h1>🎯 Japanese Text Vector - ユーザー辞書デモ</h1>
         
         <div class="status" id="status">Loading WASM module...</div>
 
         <div class="grid">
             <div class="card">
-                <h3>📚 User Dictionary Configuration</h3>
+                <h3>📚 ユーザー辞書設定</h3>
                 
                 <div class="input-group">
-                    <label for="dictionary">Dictionary Entries (JSON format):</label>
+                    <label for="dictionary">辞書エントリー (JSON形式):</label>
                     <textarea id="dictionary" rows="12" placeholder='[
   {
     "surface": "人工知能",
@@ -239,77 +239,77 @@
 ]</textarea>
                 </div>
                 
-                <button onclick="applyDictionary()">Apply Dictionary</button>
-                <button onclick="clearDictionary()">Clear Dictionary</button>
-                <button onclick="loadExampleDictionary()">Load Example Dictionary</button>
+                <button onclick="applyDictionary()">辞書を適用</button>
+                <button onclick="clearDictionary()">辞書をクリア</button>
+                <button onclick="loadExampleDictionary()">サンプル辞書を読み込み</button>
                 
                 <div id="dictionaryStatus" class="result" style="display: none;"></div>
             </div>
 
             <div class="card">
-                <h3>🔍 Test Text Processing</h3>
+                <h3>🔍 テキスト処理テスト</h3>
                 
                 <div class="input-group">
-                    <label for="testText">Input Text:</label>
-                    <textarea id="testText" rows="4" placeholder="Enter Japanese text to test dictionary normalization...">AIとMLの技術を使って、NLPやComputer Visionの研究をしています。ディープラーニングは人工知能の重要な分野です。</textarea>
+                    <label for="testText">入力テキスト:</label>
+                    <textarea id="testText" rows="4" placeholder="辞書の正規化をテストする日本語テキストを入力...">AIとMLの技術を使って、NLPやComputer Visionの研究をしています。ディープラーニングは人工知能の重要な分野です。</textarea>
                 </div>
                 
-                <button onclick="processText()">Process Text</button>
+                <button onclick="processText()">テキストを処理</button>
                 
                 <div id="processResult" class="result" style="display: none;">
-                    <h4>Tokenization Result:</h4>
+                    <h4>トークン化結果:</h4>
                     <div id="tokens" class="tokens"></div>
                 </div>
             </div>
         </div>
 
-        <h2>📊 Similarity Comparison</h2>
+        <h2>📊 類似度比較</h2>
         
         <div class="card">
             <div class="input-group">
-                <label for="text1">Text 1:</label>
-                <input type="text" id="text1" value="AIとMLの研究" placeholder="Enter first text...">
+                <label for="text1">テキスト1:</label>
+                <input type="text" id="text1" value="AIとMLの研究" placeholder="最初のテキストを入力...">
             </div>
             
             <div class="input-group">
-                <label for="text2">Text 2:</label>
-                <input type="text" id="text2" value="人工知能と機械学習の研究" placeholder="Enter second text...">
+                <label for="text2">テキスト2:</label>
+                <input type="text" id="text2" value="人工知能と機械学習の研究" placeholder="2番目のテキストを入力...">
             </div>
             
-            <button onclick="calculateSimilarity()">Calculate Similarity</button>
+            <button onclick="calculateSimilarity()">類似度を計算</button>
             
             <div class="comparison-grid" id="comparisonResult" style="display: none;">
                 <div class="comparison-card">
-                    <h4>Without Dictionary</h4>
+                    <h4>辞書なし</h4>
                     <div class="similarity-score" id="similarityWithout">-</div>
                     <div id="tokensWithout" class="tokens"></div>
                 </div>
                 <div class="comparison-card">
-                    <h4>With Dictionary</h4>
+                    <h4>辞書あり</h4>
                     <div class="similarity-score" id="similarityWith">-</div>
                     <div id="tokensWith" class="tokens"></div>
                 </div>
             </div>
         </div>
 
-        <h2>💡 How It Works</h2>
+        <h2>💡 仕組み</h2>
         
         <div class="card">
-            <p>This demo shows how user dictionaries can improve text vectorization:</p>
+            <p>このデモは、ユーザー辞書がテキストのベクトル化をどのように改善するかを示しています：</p>
             <ul>
-                <li><strong>Surface Form:</strong> The normalized/canonical representation of a term</li>
-                <li><strong>Variants:</strong> Alternative spellings, abbreviations, or synonyms that map to the surface form</li>
-                <li><strong>Tokenization:</strong> When processing text, variants are automatically replaced with their surface forms</li>
-                <li><strong>Similarity:</strong> Documents using different variants of the same concept will have higher similarity scores</li>
+                <li><strong>表層形（Surface Form）:</strong> 用語の正規化された標準的な表現</li>
+                <li><strong>異表記（Variants）:</strong> 表層形にマッピングされる別表記、略語、同義語</li>
+                <li><strong>トークン化:</strong> テキスト処理時に、異表記は自動的に表層形に置換されます</li>
+                <li><strong>類似度:</strong> 同じ概念の異なる表記を使用する文書間で、より高い類似度スコアが得られます</li>
             </ul>
             
             <div class="example-dictionary">
-                <strong>Example Benefits:</strong>
+                <strong>メリットの例:</strong>
                 <ul>
-                    <li>"AI" → "人工知能" (English abbreviation to Japanese)</li>
-                    <li>"エーアイ" → "人工知能" (Katakana to Kanji)</li>
-                    <li>"ML" → "機械学習" (Technical abbreviations)</li>
-                    <li>Improves cross-language and cross-script matching</li>
+                    <li>"AI" → "人工知能" （英語略語から日本語へ）</li>
+                    <li>"エーアイ" → "人工知能" （カタカナから漢字へ）</li>
+                    <li>"ML" → "機械学習" （技術的な略語）</li>
+                    <li>言語間・文字種間のマッチング精度向上</li>
                 </ul>
             </div>
         </div>
@@ -326,7 +326,7 @@
         async function initialize() {
             try {
                 const statusEl = document.getElementById('status');
-                statusEl.textContent = 'Loading WASM module...';
+                statusEl.textContent = 'WASMモジュールを読み込み中...';
                 statusEl.className = 'status loading';
                 
                 await init();
@@ -385,7 +385,7 @@
                 }
                 
                 // Train the models by stepping through retraining
-                statusEl.textContent = 'Training models...';
+                statusEl.textContent = 'モデルを訓練中...';
                 
                 // Check if retraining is needed and start if not already in progress
                 try {
@@ -415,20 +415,20 @@
                     if (done) break;
                 }
                 
-                statusEl.textContent = 'Ready! Dictionary has been applied to one embedder for comparison.';
+                statusEl.textContent = '準備完了！比較用に片方のEmbedderに辞書が適用されています。';
                 statusEl.className = 'status ready';
                 isReady = true;
                 
             } catch (err) {
-                console.error('Initialization error:', err);
-                document.getElementById('status').textContent = `Error: ${err.message}`;
+                console.error('初期化エラー:', err);
+                document.getElementById('status').textContent = `エラー: ${err.message}`;
                 document.getElementById('status').className = 'status error';
             }
         }
 
         window.applyDictionary = function() {
             if (!isReady) {
-                alert('Please wait for initialization to complete');
+                alert('初期化が完了するまでお待ちください');
                 return;
             }
             
@@ -445,7 +445,7 @@
                 
                 // Retrain the model after applying new dictionary
                 statusEl.style.display = 'block';
-                statusEl.innerHTML = `⏳ Dictionary applied, retraining model...`;
+                statusEl.innerHTML = `⏳ 辞書を適用中、モデルを再訓練しています...`;
                 
                 // Start retraining
                 embedderWithDict.start_background_retrain(64);
@@ -457,15 +457,15 @@
                     steps++;
                     if (done || steps > 100) {
                         clearInterval(retrainInterval);
-                        statusEl.innerHTML = `✅ Dictionary applied and model retrained!<br>
-                            <strong>${dictionary.length}</strong> entries loaded with 
-                            <strong>${dictionary.reduce((sum, entry) => sum + entry.variants.length, 0)}</strong> variants total.`;
+                        statusEl.innerHTML = `✅ 辞書が適用され、モデルが再訓練されました！<br>
+                            <strong>${dictionary.length}</strong>個のエントリー、
+                            合計<strong>${dictionary.reduce((sum, entry) => sum + entry.variants.length, 0)}</strong>個の異表記が読み込まれました。`;
                     }
                 }, 10);
                     
             } catch (err) {
                 statusEl.style.display = 'block';
-                statusEl.innerHTML = `❌ Error: ${err.message}<br>Please check your JSON format.`;
+                statusEl.innerHTML = `❌ エラー: ${err.message}<br>JSONフォーマットを確認してください。`;
             }
         };
 
@@ -477,7 +477,7 @@
             
             const statusEl = document.getElementById('dictionaryStatus');
             statusEl.style.display = 'block';
-            statusEl.innerHTML = '⏳ Dictionary cleared, retraining model...';
+            statusEl.innerHTML = '⏳ 辞書をクリア中、モデルを再訓練しています...';
             
             // Retrain the model after clearing dictionary
             embedderWithDict.start_background_retrain(64);
@@ -489,7 +489,7 @@
                 steps++;
                 if (done || steps > 100) {
                     clearInterval(retrainInterval);
-                    statusEl.innerHTML = '🔄 Dictionary cleared and model retrained.';
+                    statusEl.innerHTML = '🔄 辞書がクリアされ、モデルが再訓練されました。';
                 }
             }, 10);
         };
@@ -566,7 +566,7 @@
                 
                 // Display matches as tokens
                 if (matches.length > 0) {
-                    tokensEl.innerHTML = '<strong>Dictionary Matches Found:</strong><br>';
+                    tokensEl.innerHTML = '<strong>辞書マッチが見つかりました:</strong><br>';
                     for (const match of matches) {
                         const tokenEl = document.createElement('span');
                         tokenEl.className = 'token dictionary';
@@ -574,11 +574,11 @@
                         tokensEl.appendChild(tokenEl);
                     }
                 } else {
-                    tokensEl.innerHTML = 'No dictionary matches found. Text will be tokenized using standard N-gram approach.';
+                    tokensEl.innerHTML = '辞書マッチが見つかりませんでした。標準のN-gramアプローチでトークン化されます。';
                 }
                 
                 // Add sample n-grams
-                tokensEl.innerHTML += '<br><br><strong>Sample N-grams:</strong><br>';
+                tokensEl.innerHTML += '<br><br><strong>サンプルN-gram:</strong><br>';
                 const sampleTokens = ['研究', 'して', 'います', '技術', '使って'];
                 for (const token of sampleTokens) {
                     if (text.includes(token)) {
@@ -589,7 +589,7 @@
                     }
                 }
             } else {
-                tokensEl.innerHTML = 'No dictionary applied. Using standard N-gram tokenization.';
+                tokensEl.innerHTML = '辞書が適用されていません。標準のN-gramトークン化を使用しています。';
             }
         };
 
@@ -600,7 +600,7 @@
             const text2 = document.getElementById('text2').value;
             
             if (!text1 || !text2) {
-                alert('Please enter both texts');
+                alert('両方のテキストを入力してください');
                 return;
             }
             
@@ -621,8 +621,8 @@
             const tokensWithoutEl = document.getElementById('tokensWithout');
             const tokensWithEl = document.getElementById('tokensWith');
             
-            tokensWithoutEl.innerHTML = '<small>Standard tokenization preserves original forms</small>';
-            tokensWithEl.innerHTML = '<small>Dictionary normalizes variants to surface forms</small>';
+            tokensWithoutEl.innerHTML = '<small>標準トークン化は元の形式を保持</small>';
+            tokensWithEl.innerHTML = '<small>辞書は異表記を表層形に正規化</small>';
             
             // Highlight improvement
             if (simWithDict > simWithoutDict) {

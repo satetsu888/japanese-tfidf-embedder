@@ -215,17 +215,41 @@
                 
                 // Initialize embedders
                 stableEmbedder = new StableHashEmbedder(64, 2);
-                incrementalEmbedder = new IncrementalEmbedder(0.3);
+                // Use higher threshold to prevent auto-retrain during document addition
+                incrementalEmbedder = new IncrementalEmbedder(2.0);
                 
                 // Add initial documents
                 const initialDocs = [
                     "今日は天気がいいですね",
                     "明日は雨が降りそうです",
-                    "美味しいラーメンを見つけました"
+                    "美味しいラーメンを見つけました",
+                    "プログラミングは楽しいです",
+                    "日本語の文書解析をしています",
+                    "機械学習の勉強をしています",
+                    "自然言語処理は興味深い分野です",
+                    "テキストマイニングの技術"
                 ];
                 
                 for (const doc of initialDocs) {
                     incrementalEmbedder.add_document(doc, 64);
+                }
+                
+                // Explicitly train the model
+                document.getElementById('status').textContent = 'Training model...';
+                
+                // Start training
+                try {
+                    incrementalEmbedder.start_background_retrain(64);
+                } catch (e) {
+                    // May already be training, that's OK
+                    console.log('Model may already be training');
+                }
+                
+                // Complete the training
+                let maxSteps = 100;
+                for (let i = 0; i < maxSteps; i++) {
+                    const done = incrementalEmbedder.step_retrain();
+                    if (done) break;
                 }
                 
                 updateStats();
@@ -291,8 +315,14 @@
         }
 
         function forceRetrain() {
-            incrementalEmbedder.start_background_retrain(64);
-            startRetrainMonitor();
+            try {
+                incrementalEmbedder.start_background_retrain(64);
+                startRetrainMonitor();
+            } catch (e) {
+                // If already retraining, just start monitoring
+                console.log('Already retraining, starting monitor');
+                startRetrainMonitor();
+            }
         }
 
         function startRetrainMonitor() {

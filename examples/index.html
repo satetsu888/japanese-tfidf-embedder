@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Japanese Text Vector - デモ一覧</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .demos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .demo-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .demo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .demo-card .icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        
+        .demo-card h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .demo-card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .demo-card .features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        
+        .demo-card .features li {
+            color: #555;
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .demo-card .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .demo-card .launch-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        .demo-card .launch-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .info-section {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .info-section h2 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .info-section p {
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .info-section code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #d73a49;
+        }
+        
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .tech-badge {
+            background: #f0f4ff;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 50px;
+            opacity: 0.9;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .demos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Japanese Text Vector</h1>
+            <p>
+                WASM対応の軽量な日本語テキストベクトル化ライブラリ<br>
+                TF-IDF + LSA による高速なセマンティック類似度計算
+            </p>
+        </div>
+        
+        <div class="info-section">
+            <h2>📊 プロジェクト概要</h2>
+            <p>
+                Japanese Text Vectorは、ブラウザ上で完全に動作する日本語テキストのベクトル化ライブラリです。
+                WebAssemblyを使用することで、サーバーとの通信なしに高速な文書類似度計算を実現します。
+            </p>
+            <p>
+                <strong>主な特徴:</strong> 辞書不要の文字N-gram方式、インクリメンタル学習、ユーザー辞書対応、
+                わずか182KBの軽量WASM実装
+            </p>
+            <div class="tech-stack">
+                <span class="tech-badge">Rust</span>
+                <span class="tech-badge">WebAssembly</span>
+                <span class="tech-badge">TF-IDF</span>
+                <span class="tech-badge">LSA (潜在意味解析)</span>
+                <span class="tech-badge">N-gram</span>
+            </div>
+        </div>
+        
+        <div class="demos-grid">
+            <a href="basic_usage.html" class="demo-card">
+                <div class="icon">🎯</div>
+                <h2>基本的な使い方</h2>
+                <p>
+                    Japanese Text Vectorの基本機能を体験できるデモです。
+                    テキストのベクトル化と類似度計算の基本を学べます。
+                </p>
+                <ul class="features">
+                    <li>IncrementalEmbedderの使用方法</li>
+                    <li>StableHashEmbedderの比較</li>
+                    <li>リアルタイム類似度計算</li>
+                    <li>バッチ検索機能</li>
+                </ul>
+                <span class="launch-btn">デモを開く →</span>
+            </a>
+            
+            <a href="incremental_demo.html" class="demo-card">
+                <div class="icon">📈</div>
+                <h2>インクリメンタル学習デモ</h2>
+                <p>
+                    300個のサンプル文書を使用した大規模なデモです。
+                    動的なモデル更新と文書の追加・検索を体験できます。
+                </p>
+                <ul class="features">
+                    <li>300文書（15カテゴリ×20文書）</li>
+                    <li>リアルタイム学習の可視化</li>
+                    <li>重複文書の自動検出</li>
+                    <li>パフォーマンスメトリクス表示</li>
+                </ul>
+                <span class="launch-btn">デモを開く →</span>
+            </a>
+            
+            <a href="dictionary_demo.html" class="demo-card">
+                <div class="icon">📚</div>
+                <h2>ユーザー辞書デモ</h2>
+                <p>
+                    カスタム辞書を使用して、同義語や異表記を統一的に扱うデモです。
+                    技術用語の正規化による精度向上を確認できます。
+                </p>
+                <ul class="features">
+                    <li>JSON形式での辞書定義</li>
+                    <li>異表記の自動正規化</li>
+                    <li>辞書あり/なしの比較</li>
+                    <li>リアルタイム辞書編集</li>
+                </ul>
+                <span class="launch-btn">デモを開く →</span>
+            </a>
+        </div>
+        
+        <div class="info-section">
+            <h2>🚀 使い方</h2>
+            <p>
+                各デモページでは、実際にテキストを入力して機能を試すことができます。
+                すべての処理はブラウザ内で完結し、外部サーバーとの通信は行いません。
+            </p>
+            <p>
+                <strong>推奨環境:</strong> モダンブラウザ（Chrome, Firefox, Safari, Edge）の最新版
+            </p>
+            <p>
+                <strong>ローカルで実行する場合:</strong>
+            </p>
+            <p style="background: #f4f4f4; padding: 15px; border-radius: 8px; font-family: monospace;">
+                # リポジトリをクローン<br>
+                git clone [repository-url]<br>
+                cd japanese-text-vector<br><br>
+                # WASMをビルド<br>
+                wasm-pack build --target web --out-dir pkg<br><br>
+                # ローカルサーバーを起動<br>
+                python3 -m http.server 8000<br><br>
+                # ブラウザで開く<br>
+                # http://localhost:8000/examples/
+            </p>
+        </div>
+        
+        <div class="info-section">
+            <h2>📝 ライセンス</h2>
+            <p>
+                このプロジェクトはMITライセンスのもとで公開されています。
+                商用利用、改変、再配布が自由に行えます。
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>
+                Built with ❤️ using Rust and WebAssembly<br>
+                <a href="https://github.com/[your-repo]">GitHub Repository</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
