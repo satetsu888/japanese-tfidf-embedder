@@ -86,23 +86,60 @@ impl TfIdfLsa {
     
     // Perform Latent Semantic Analysis using SVD
     fn perform_lsa(&mut self, tfidf_matrix: DMatrix<f32>) {
-        // For simplicity, we'll use a basic dimensionality reduction approach
-        // In production, you'd want to use a proper SVD implementation
-        
         let (nrows, ncols) = tfidf_matrix.shape();
         let target_dim = self.embedding_dim.min(nrows).min(ncols);
         
-        // Compute covariance matrix (simplified approach)
-        let _covariance = &tfidf_matrix * tfidf_matrix.transpose();
+        // Use simplified PCA-like approach for dimensionality reduction
+        // Compute covariance matrix: C = X * X^T / n
+        let covariance = (&tfidf_matrix * tfidf_matrix.transpose()) / ncols as f32;
         
-        // Extract top components (simplified - just taking first rows)
-        // In production, you'd compute eigenvectors properly
+        // Use power iteration to find principal components
+        // This is a simplified approach suitable for WASM
         let mut components = DMatrix::zeros(target_dim, nrows);
+        let mut used_vectors: Vec<DVector<f32>> = Vec::new();
+        
         for i in 0..target_dim {
-            for j in 0..nrows {
-                // Simple initialization - in production use proper SVD
-                components[(i, j)] = if i == j { 1.0 } else { 0.0 };
+            // Initialize random vector
+            let mut v = DVector::from_fn(nrows, |j, _| {
+                ((j + i * 13) as f32 * 0.61803398875).fract() - 0.5
+            });
+            
+            // Orthogonalize against previous components
+            for prev_v in &used_vectors {
+                let dot_product: f32 = v.dot(prev_v);
+                let norm_squared: f32 = prev_v.norm_squared();
+                if norm_squared > 1e-6 {
+                    let proj = dot_product / norm_squared;
+                    v = &v - proj * prev_v;
+                }
             }
+            
+            // Power iteration to find eigenvector
+            for _ in 0..10 {
+                v = &covariance * &v;
+                
+                // Orthogonalize against previous components
+                for prev_v in &used_vectors {
+                    let dot_product: f32 = v.dot(prev_v);
+                    let norm_squared: f32 = prev_v.norm_squared();
+                    if norm_squared > 1e-6 {
+                        let proj = dot_product / norm_squared;
+                        v = &v - proj * prev_v;
+                    }
+                }
+                
+                // Normalize
+                let norm = v.norm();
+                if norm > 1e-6 {
+                    v /= norm;
+                }
+            }
+            
+            // Store component
+            for j in 0..nrows {
+                components[(i, j)] = v[j];
+            }
+            used_vectors.push(v);
         }
         
         self.lsa_components = Some(components);
@@ -111,6 +148,11 @@ impl TfIdfLsa {
     // Transform a document to embedding vector
     pub fn transform(&self, tokens: &[String]) -> Vec<f32> {
         let vocab_size = self.vocabulary.len();
+        
+        // Return zero vector if vocabulary is empty
+        if vocab_size == 0 {
+            return vec![0.0; self.embedding_dim];
+        }
         
         // Calculate TF-IDF vector for the document
         let mut tfidf_vec = vec![0f32; vocab_size];
@@ -127,9 +169,9 @@ impl TfIdfLsa {
         let total_terms = tokens.len() as f32;
         if total_terms > 0.0 {
             for (idx, &count) in tf_counts.iter().enumerate() {
-                if count > 0.0 {
+                if count > 0.0 && idx < self.idf_weights.len() {
                     let tf = count / total_terms;
-                    tfidf_vec[idx] = tf * self.idf_weights.get(idx).unwrap_or(&0.0);
+                    tfidf_vec[idx] = tf * self.idf_weights[idx];
                 }
             }
         }

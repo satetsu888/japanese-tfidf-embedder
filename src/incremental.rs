@@ -227,6 +227,11 @@ impl IncrementalEmbedder {
     pub fn get_document_count(&self) -> usize {
         self.documents.len()
     }
+    
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+    pub fn get_vocabulary_size(&self) -> usize {
+        self.model.vocab_size()
+    }
 
     #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
     pub fn get_vocab_size(&self) -> usize {
